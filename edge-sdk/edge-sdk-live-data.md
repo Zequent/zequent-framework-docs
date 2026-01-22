@@ -7,19 +7,22 @@ Edge SDK Live Data for Registering Broadcasters and produce Telemetry Data.
 The Produce Telemetry method already has a default implementation.
 
 ```java
+import java.time.LocalDateTime;
+
 public class TelemetryRequestData {
 	private String tid;
 	private String sn;
 	private String assetId;
-	private Integer timestamp;
+	private LocalDateTime timestamp;
 	private LiveDataType type;
 	private AssetTelemetryData assetTelemetry;
 	private SubAssetTelemetryData subAssetTelemetry;
 }
+
 public class AssetTelemetryData {
 
 	private String id;
-	private Integer timestamp;
+	private LocalDateTime timestamp;
 	private Float latitude;
 	private Float longitude;
 	private Float absoluteAltitude;
@@ -58,7 +61,7 @@ public class AssetTelemetryData {
 		private Float rate;
 		private NetworkStateQualityEnum quality;
 	}
-	
+
 	public static class SubAssetInformation {
 		private String sn;
 		private String model;
@@ -72,7 +75,7 @@ public class AssetTelemetryData {
 public class SubAssetTelemetryData {
 
 	private String id;
-	private Integer timestamp;
+	private LocalDateTime timestamp;
 	private Float latitude;
 	private Float longitude;
 	private Float absoluteAltitude;
@@ -91,42 +94,42 @@ public class SubAssetTelemetryData {
 	private Double totalMovementTime;
 	private SubAssetMode mode;
 	private String country;
-	
+
 	public static class BatteryInformation {
 		private String percentage;
 		private Integer remainingTime;
 		private String returnToHomePower;
 	}
-	
+
 	public static class PayloadTelemetry {
 		private String id;
-		private Integer timestamp;
+		private LocalDateTime timestamp;
 		private CameraData cameraData;
 		private RangeFinderData rangeFinderData;
 		private SensorData sensorData;
 		private String name;
 	}
-	
+
 	public static class CameraData {
 		private String currentLens;
 		private Float gimbalPitch;
 		private Float gimbalYaw;
 		private Float zoomFactor;
 	}
-	
+
 	public static class RangeFinderData {
 		private Float targetLatitude;
 		private Float targetLongitude;
 		private Float targetDistance;
 		private Float targetAltitude;
 	}
-	
+
 	public static class SensorData {
 		private Float targetTemperature;
 	}
 }
 
-enum LiveDataType{
+enum LiveDataType {
 	ASSET_TELEMETRY,
 	SUBASSET_TELEMETRY
 }
