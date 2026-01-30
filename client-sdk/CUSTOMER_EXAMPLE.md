@@ -1,8 +1,8 @@
 # Minimal Customer Example
 
-## Schritt für Schritt: Dein erstes Projekt mit Zequent Client SDK
+## Step by Step: Your First Project with Zequent Client SDK
 
-### 1. Neues Quarkus Projekt erstellen
+### 1. Create New Quarkus Project
 
 ```bash
 mvn io.quarkus:quarkus-maven-plugin:3.17.4:create \
@@ -13,9 +13,9 @@ mvn io.quarkus:quarkus-maven-plugin:3.17.4:create \
 cd drone-app
 ```
 
-### 2. Zequent Client SDK Dependency hinzufügen
+### 2. Add Zequent Client SDK Dependency
 
-Öffne `pom.xml` und füge hinzu:
+Open `pom.xml` and add:
 
 ```xml
 <dependency>
@@ -25,19 +25,19 @@ cd drone-app
 </dependency>
 ```
 
-### 3. .env Datei erstellen
+### 3. Create .env File
 
 ```bash
-# .env im Projekt-Root
+# .env in project root
 REMOTE_CONTROL_SERVICE_HOST=localhost
 REMOTE_CONTROL_SERVICE_PORT=9091
 LIVE_DATA_SERVICE_HOST=localhost
 LIVE_DATA_SERVICE_PORT=9093
 ```
 
-### 4. Deine erste API schreiben
+### 4. Write Your First API
 
-Erstelle `src/main/java/com/example/DroneResource.java`:
+Create `src/main/java/com/example/DroneResource.java`:
 
 ```java
 package com.example;
@@ -53,7 +53,7 @@ import jakarta.ws.rs.core.MediaType;
 public class DroneResource {
 
     @Inject
-    ZequentClient zequent;  // ← Automatisch konfiguriert!
+    ZequentClient zequent;  // ← Automatically configured!
 
     @POST
     @Path("/takeoff")
@@ -70,7 +70,7 @@ public class DroneResource {
             .altitude(alt)
             .build();
 
-        // Automatisches Retry, Circuit Breaker, Load Balancing!
+        // Automatic Retry, Circuit Breaker, Load Balancing!
         return zequent.remoteControl().takeoff(request);
     }
 
@@ -86,13 +86,13 @@ public class DroneResource {
 }
 ```
 
-### 5. Starten!
+### 5. Start!
 
 ```bash
 mvn quarkus:dev
 ```
 
-### 6. Testen
+### 6. Test
 
 ```bash
 # Takeoff
@@ -102,27 +102,27 @@ curl -X POST "http://localhost:8080/drone/takeoff?sn=1581F5FKD2389A00BS8E&lat=47
 curl -X POST "http://localhost:8080/drone/land?sn=1581F5FKD2389A00BS8E"
 ```
 
-## Das war's! 🎉
+## That's it! 🎉
 
-**Keine Interfaces implementieren!**
-**Keine komplexe Konfiguration!**
-**Einfach Dependency hinzufügen und loslegen!**
+**No interfaces to implement!**
+**No complex configuration!**
+**Just add dependency and start!**
 
-## Environment wechseln
+## Switch Environment
 
 ### Development → Staging
 
 ```bash
-# Alte .env
+# Old .env
 REMOTE_CONTROL_SERVICE_HOST=localhost
 REMOTE_CONTROL_SERVICE_PORT=9091
 
-# Neue .env (Docker Compose)
+# New .env (Docker Compose)
 REMOTE_CONTROL_SERVICE_HOST=remote-control-service
 REMOTE_CONTROL_SERVICE_PORT=9091
 ```
 
-**Kein Code-Change!** Einfach neu starten:
+**No code change!** Just restart:
 ```bash
 docker-compose up
 ```
@@ -138,27 +138,27 @@ env:
     value: "remote-control-service"
 ```
 
-**Immer noch kein Code-Change!** Nur Deployment Config.
+**Still no code change!** Only deployment config.
 
-## Vollständige Projektstruktur
+## Complete Project Structure
 
 ```
 drone-app/
-├── pom.xml                      # Mit Zequent SDK dependency
+├── pom.xml                      # With Zequent SDK dependency
 ├── .env                         # Service Configuration
 ├── src/
 │   └── main/
 │       ├── java/
 │       │   └── com/example/
-│       │       └── DroneResource.java   # Deine API
+│       │       └── DroneResource.java   # Your API
 │       └── resources/
 │           └── application.properties   # Optional: Defaults
-└── docker-compose.yml           # Optional: Für Staging
+└── docker-compose.yml           # Optional: For Staging
 ```
 
-## Weitere Beispiele
+## More Examples
 
-### Service mit Business Logic
+### Service with Business Logic
 
 ```java
 package com.example;
@@ -216,7 +216,7 @@ public class DroneFlightService {
 }
 ```
 
-### WebSocket für Live Telemetry
+### WebSocket for Live Telemetry
 
 ```java
 package com.example;
@@ -259,31 +259,31 @@ public class TelemetryWebSocket {
 }
 ```
 
-## Das wichtigste:
+## The Most Important:
 
-### ✅ Was der Kunde bekommt:
+### ✅ What the Customer Gets:
 
-1. **Dependency hinzufügen** → Fertig!
-2. **`@Inject ZequentClient`** → Auto-konfiguriert!
-3. **Environment via `.env`** wechseln → Kein Code-Change!
-4. **Alle Features inklusive:**
+1. **Add dependency** → Done!
+2. **`@Inject ZequentClient`** → Auto-configured!
+3. **Switch environment via `.env`** → No code change!
+4. **All features included:**
    - Retry Logic
    - Circuit Breaker
    - Load Balancing
    - Service Discovery
    - Connection Management
 
-### ❌ Was der Kunde NICHT machen muss:
+### ❌ What the Customer Does NOT Have to Do:
 
-1. ~~Interfaces implementieren~~
-2. ~~Channels manuell erstellen~~
-3. ~~gRPC Stubs konfigurieren~~
-4. ~~Retry Logic schreiben~~
-5. ~~Circuit Breaker implementieren~~
-6. ~~Code für Environment-Switches ändern~~
+1. ~~Implement interfaces~~
+2. ~~Manually create channels~~
+3. ~~Configure gRPC stubs~~
+4. ~~Write retry logic~~
+5. ~~Implement circuit breaker~~
+6. ~~Change code for environment switches~~
 
 ## Support
 
-- 📖 Komplette Docs: [CONFIGURATION.md](CONFIGURATION.md)
+- 📖 Complete Docs: [CONFIGURATION.md](CONFIGURATION.md)
 - 🚀 Quick Start: [QUICKSTART.md](../../../docs/QUICKSTART.md)
 - 💬 GitHub: https://github.com/Zequent/zequent-framework

@@ -270,7 +270,10 @@ client.remoteControl().rebootAsset(...)
 
 ### Mission Autonomy
 ```java
-client.missionAutonomy()...  // Coming soon
+client.missionAutonomy().createMission(...)
+client.missionAutonomy().createTask(...)
+client.missionAutonomy().startTask(...)
+client.missionAutonomy().createScheduler(...)
 ```
 
 ### Live Data

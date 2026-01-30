@@ -1,14 +1,14 @@
-# Spring Boot Integration - Finale Lösung
+# Spring Boot Integration - Final Solution
 
-Die **einfachste** Möglichkeit, ZequentClient in Spring Boot zu verwenden.
+The **simplest** way to use ZequentClient in Spring Boot.
 
-Nutzt intern `ZequentClientProducer` für konsistente Bean-Erstellung.
+Uses `ZequentClientProducer` internally for consistent bean creation.
 
 ---
 
-## Lösung 1: Ultra Simple (Nur Defaults)
+## Solution 1: Ultra Simple (Only Defaults)
 
-### Schritt 1: Maven Dependency
+### Step 1: Maven Dependency
 
 ```xml
 <dependency>
@@ -18,7 +18,7 @@ Nutzt intern `ZequentClientProducer` für konsistente Bean-Erstellung.
 </dependency>
 ```
 
-### Schritt 2: Eine Bean-Methode schreiben
+### Step 2: Write One Bean Method
 
 **`src/main/java/com/yourcompany/config/ZequentConfig.java`**
 
@@ -34,7 +34,7 @@ public class ZequentConfig {
 
     @Bean
     public ZequentClient zequentClient() {
-        // Nutzt alle Defaults: localhost:8002, 8004, 8003
+        // Uses all defaults: localhost:8002, 8004, 8003
         return ZequentClient.builder()
                 .remoteControl().done()
                 .missionAutonomy().done()
@@ -44,7 +44,7 @@ public class ZequentConfig {
 }
 ```
 
-### Schritt 3: Constructor Injection verwenden
+### Step 3: Use Constructor Injection
 
 ```java
 package com.yourcompany.service;
@@ -57,7 +57,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class LiveDataService {
 
-    private final ZequentClient zequentClient;  // ← Automatisch injiziert!
+    private final ZequentClient zequentClient;  // ← Automatically injected!
 
     public void streamTelemetry() {
         zequentClient.liveData().streamTelemetryData();
@@ -65,13 +65,13 @@ public class LiveDataService {
 }
 ```
 
-**Fertig!** ✅
+**Done!** ✅
 
 ---
 
-## Lösung 2: Mit Properties (Optional)
+## Solution 2: With Properties (Optional)
 
-Wenn du Properties aus `application.properties` nutzen willst:
+If you want to use properties from `application.properties`:
 
 ### Bean mit @Value
 
@@ -116,16 +116,16 @@ public class ZequentConfig {
 ### application.properties
 
 ```properties
-# Nur was du ändern willst - Rest nutzt Defaults
+# Only what you want to change - rest uses defaults
 zequent.remote-control.host=prod-server.com
 zequent.live-data.port=9999
 ```
 
 ---
 
-## Lösung 3: Mit ZequentClientProducer (Fortgeschritten)
+## Solution 3: With ZequentClientProducer (Advanced)
 
-Wenn du den `ZequentClientProducer` direkt nutzen willst (nutzt dieselbe Logik wie Quarkus):
+If you want to use the `ZequentClientProducer` directly (uses the same logic as Quarkus):
 
 ```java
 package com.yourcompany.config;
@@ -148,7 +148,7 @@ public class ZequentConfig {
             @Value("${zequent.live-data.host:localhost}") String ldHost,
             @Value("${zequent.live-data.port:8003}") int ldPort) {
 
-        // Manuell GrpcClientConfig erstellen
+        // Manually create GrpcClientConfig
         GrpcClientConfig config = GrpcClientConfig.builder()
                 .remoteControlConfig(ServiceConfig.builder()
                         .serviceName("remote-control")
@@ -183,12 +183,12 @@ public class ZequentConfig {
                 .defaultLoadBalancerType(ServiceConfig.LoadBalancerType.ROUND_ROBIN)
                 .build();
 
-        // Nutze Producer-Logik direkt
+        // Use producer logic directly
         return createZequentClient(config);
     }
 
     /**
-     * Erstellt ZequentClient mit derselben Logik wie ZequentClientProducer.
+     * Creates ZequentClient with the same logic as ZequentClientProducer.
      */
     private ZequentClient createZequentClient(GrpcClientConfig config) {
         // Create channels for each service
@@ -220,44 +220,44 @@ public class ZequentConfig {
 
 ---
 
-## Empfehlung
+## Recommendation
 
-### Für die meisten Kunden: **Lösung 1** oder **Lösung 2**
+### For most customers: **Solution 1** or **Solution 2**
 
-✅ **Ultra-einfach**
-✅ **Builder mit Defaults**
-✅ **Optional Properties via @Value**
+✅ **Ultra-simple**
+✅ **Builder with defaults**
+✅ **Optional properties via @Value**
 
-### Für Power-User: **Lösung 3**
+### For power users: **Solution 3**
 
-✅ **Nutzt Producer-Logik direkt**
-✅ **Maximale Kontrolle**
-✅ **Konsistent mit Quarkus**
-
----
-
-## Zweck der Komponenten
-
-### `ZequentClientProducer` (für Quarkus)
-- Wird automatisch von Quarkus CDI verwendet
-- Liest Properties via `@ConfigMapping`
-- Erstellt `ZequentClient` automatisch
-
-### `ZequentClient.builder()` (für Spring Boot & Standalone)
-- Für manuelle Bean-Erstellung
-- Nutzt Defaults (localhost:8002/8004/8003)
-- Flexibel konfigurierbar
-
-### Beide produzieren dasselbe Ergebnis! ✅
-
-Der `ZequentClientProducer` ist **nur** für Quarkus CDI relevant.
-Für Spring Boot nutzt der Kunde den **Builder** - das ist der richtige Weg! 🎯
+✅ **Uses producer logic directly**
+✅ **Maximum control**
+✅ **Consistent with Quarkus**
 
 ---
 
-## Verwendung
+## Purpose of Components
 
-Egal welche Lösung - die Verwendung ist identisch:
+### `ZequentClientProducer` (for Quarkus)
+- Automatically used by Quarkus CDI
+- Reads properties via `@ConfigMapping`
+- Creates `ZequentClient` automatically
+
+### `ZequentClient.builder()` (for Spring Boot & Standalone)
+- For manual bean creation
+- Uses defaults (localhost:8002/8004/8003)
+- Flexibly configurable
+
+### Both produce the same result! ✅
+
+The `ZequentClientProducer` is **only** relevant for Quarkus CDI.
+For Spring Boot, the customer uses the **Builder** - that's the right way! 🎯
+
+---
+
+## Usage
+
+No matter which solution - the usage is identical:
 
 ```java
 @Service
@@ -272,4 +272,4 @@ public class MyService {
 }
 ```
 
-**Einfach, oder?** 🎉
+**Simple, right?** 🎉
