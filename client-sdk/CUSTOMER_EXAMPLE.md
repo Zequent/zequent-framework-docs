@@ -96,13 +96,13 @@ mvn quarkus:dev
 
 ```bash
 # Takeoff
-curl -X POST "http://localhost:8080/drone/takeoff?sn=1581F5FKD2389A00BS8E&lat=47.3769&lon=8.5417&alt=100"
+curl -X POST "http://localhost:8080/drone/takeoff?sn=YOUR_DEVICE_SN&lat=47.3769&lon=8.5417&alt=100"
 
 # Land
-curl -X POST "http://localhost:8080/drone/land?sn=1581F5FKD2389A00BS8E"
+curl -X POST "http://localhost:8080/drone/land?sn=YOUR_DEVICE_SN"
 ```
 
-## That's it! 🎉
+## That's it! 
 
 **No interfaces to implement!**
 **No complex configuration!**
@@ -144,16 +144,16 @@ env:
 
 ```
 drone-app/
-├── pom.xml                      # With Zequent SDK dependency
-├── .env                         # Service Configuration
-├── src/
-│   └── main/
-│       ├── java/
-│       │   └── com/example/
-│       │       └── DroneResource.java   # Your API
-│       └── resources/
-│           └── application.properties   # Optional: Defaults
-└── docker-compose.yml           # Optional: For Staging
+ pom.xml                      # With Zequent SDK dependency
+ .env                         # Service Configuration
+ src/
+    main/
+        java/
+           com/example/
+               DroneResource.java   # Your API
+        resources/
+            application.properties   # Optional: Defaults
+ docker-compose.yml           # Optional: For Staging
 ```
 
 ## More Examples
@@ -261,7 +261,7 @@ public class TelemetryWebSocket {
 
 ## The Most Important:
 
-### ✅ What the Customer Gets:
+###  What the Customer Gets:
 
 1. **Add dependency** → Done!
 2. **`@Inject ZequentClient`** → Auto-configured!
@@ -273,7 +273,7 @@ public class TelemetryWebSocket {
    - Service Discovery
    - Connection Management
 
-### ❌ What the Customer Does NOT Have to Do:
+###  What the Customer Does NOT Have to Do:
 
 1. ~~Implement interfaces~~
 2. ~~Manually create channels~~
@@ -284,6 +284,6 @@ public class TelemetryWebSocket {
 
 ## Support
 
-- 📖 Complete Docs: [CONFIGURATION.md](CONFIGURATION.md)
-- 🚀 Quick Start: [QUICKSTART.md](../../../docs/QUICKSTART.md)
-- 💬 GitHub: https://github.com/Zequent/zequent-framework
+-  Complete Docs: [CONFIGURATION.md](CONFIGURATION.md)
+-  Quick Start: [QUICKSTART.md](../../../docs/QUICKSTART.md)
+-  GitHub: https://github.com/Zequent/zequent-framework

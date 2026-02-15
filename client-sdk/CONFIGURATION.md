@@ -180,7 +180,7 @@ public class MyService {
 
     public void doSomething() {
         var request = TakeoffRequest.builder()
-            .sn("1581F5FKD2389A00BS8E")
+            .sn("YOUR_DEVICE_SN")
             .latitude(47.3769)
             .longitude(8.5417)
             .altitude(100.0)
@@ -303,11 +303,11 @@ Stork discovering service: remote-control-service
 
 ## Summary
 
-✅ **No code changes** for environment switching
-✅ **Properties or environment variables** - your choice
-✅ **Multi-service** - each service independently configured
-✅ **Stork support** - automatic service discovery
-✅ **Load balancing** - per-service configuration
-✅ **Resilience** - built-in retry, circuit breaker, timeouts
+ **No code changes** for environment switching
+ **Properties or environment variables** - your choice
+ **Multi-service** - each service independently configured
+ **Stork support** - automatic service discovery
+ **Load balancing** - per-service configuration
+ **Resilience** - built-in retry, circuit breaker, timeouts
 
-Just copy the right `.env` file and run! 🚀
+Just copy the right `.env` file and run! 

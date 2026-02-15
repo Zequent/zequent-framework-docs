@@ -65,7 +65,7 @@ public class LiveDataService {
 }
 ```
 
-**Done!** ✅
+**Done!** 
 
 ---
 
@@ -224,15 +224,15 @@ public class ZequentConfig {
 
 ### For most customers: **Solution 1** or **Solution 2**
 
-✅ **Ultra-simple**
-✅ **Builder with defaults**
-✅ **Optional properties via @Value**
+ **Ultra-simple**
+ **Builder with defaults**
+ **Optional properties via @Value**
 
 ### For power users: **Solution 3**
 
-✅ **Uses producer logic directly**
-✅ **Maximum control**
-✅ **Consistent with Quarkus**
+ **Uses producer logic directly**
+ **Maximum control**
+ **Consistent with Quarkus**
 
 ---
 
@@ -248,10 +248,10 @@ public class ZequentConfig {
 - Uses defaults (localhost:8002/8004/8003)
 - Flexibly configurable
 
-### Both produce the same result! ✅
+### Both produce the same result! 
 
 The `ZequentClientProducer` is **only** relevant for Quarkus CDI.
-For Spring Boot, the customer uses the **Builder** - that's the right way! 🎯
+For Spring Boot, the customer uses the **Builder** - that's the right way! 
 
 ---
 
@@ -272,4 +272,4 @@ public class MyService {
 }
 ```
 
-**Simple, right?** 🎉
+**Simple, right?** 

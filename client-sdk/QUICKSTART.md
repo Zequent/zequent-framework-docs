@@ -68,7 +68,7 @@ public class DroneController {
     @Path("/takeoff")
     public TakeoffResponse takeoff() {
         TakeoffRequest request = TakeoffRequest.builder()
-            .sn("1581F5FKD2389A00BS8E")
+            .sn("YOUR_DEVICE_SN")
             .latitude(47.3769)
             .longitude(8.5417)
             .altitude(100.0)
@@ -81,7 +81,7 @@ public class DroneController {
     @Path("/land")
     public RemoteControlResponse land() {
         ReturnToHomeRequest request = ReturnToHomeRequest.builder()
-            .sn("1581F5FKD2389A00BS8E")
+            .sn("YOUR_DEVICE_SN")
             .build();
 
         return client.remoteControl().returnToHome(request);
@@ -110,7 +110,7 @@ public class MyApp {
                 .build()) {
 
             var request = TakeoffRequest.builder()
-                .sn("1581F5FKD2389A00BS8E")
+                .sn("YOUR_DEVICE_SN")
                 .latitude(47.3769)
                 .longitude(8.5417)
                 .altitude(100.0)
@@ -283,12 +283,12 @@ client.liveData().streamTelemetryData(request, onData, onError)
 
 ## Built-in Features
 
-✅ **Automatic Retry** - Retries failed requests (configurable)
-✅ **Circuit Breaker** - Prevents cascading failures
-✅ **Load Balancing** - Round-robin, random, least-requests
-✅ **Service Discovery** - Stork integration for Kubernetes
-✅ **Connection Management** - Keep-alive, reconnection
-✅ **Environment Variables** - No code changes between environments
+ **Automatic Retry** - Retries failed requests (configurable)
+ **Circuit Breaker** - Prevents cascading failures
+ **Load Balancing** - Round-robin, random, least-requests
+ **Service Discovery** - Stork integration for Kubernetes
+ **Connection Management** - Keep-alive, reconnection
+ **Environment Variables** - No code changes between environments
 
 ## Configuration Reference
 
@@ -370,4 +370,4 @@ For issues or questions:
 3. **Inject `ZequentClient`** in your code
 4. **Use it!** `client.remoteControl().takeoff(...)`
 
-That's all! No interfaces to implement, no complex setup! 🚀
+That's all! No interfaces to implement, no complex setup! 
