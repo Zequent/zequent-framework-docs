@@ -52,16 +52,16 @@ Next, set up a new Maven project or edit existing Maven projects to add the Zequ
 
     <dependencies>
         <dependency>
-            <groupId>com.zequent.framework.client.sdk</groupId>
-            <artifactId>java-client-sdk</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <groupId>com.zqnt.sdk</groupId>
+            <artifactId>client-sdk</artifactId>
+            <version>1.0.0</version>
         </dependency>
     </dependencies>
 
     <repositories>
         <repository>
             <id>github</id>
-            <url>https://maven.pkg.github.com/Zequent/zequent-framework</url>
+            <url>https://maven.pkg.github.com/Zequent/zqnt-client-sdk-java</url>
         </repository>
     </repositories>
 </project>
@@ -151,7 +151,7 @@ services:
     depends_on:
       - zequent_db
       - redis
-    image: ghcr.io/zequent/edge-dji:latest
+    image: ghcr.io/zequent/zqnt-edge-adapter-dji:latest
     ports:
       - "9001:9001"
     environment:
