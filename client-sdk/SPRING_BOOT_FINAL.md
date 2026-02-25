@@ -12,9 +12,9 @@ Uses `ZequentClientProducer` internally for consistent bean creation.
 
 ```xml
 <dependency>
-    <groupId>com.zequent.framework</groupId>
-    <artifactId>java-client-sdk</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <groupId>com.zqnt.sdk</groupId>
+    <artifactId>client-sdk</artifactId>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -25,7 +25,7 @@ Uses `ZequentClientProducer` internally for consistent bean creation.
 ```java
 package com.yourcompany.config;
 
-import com.zequent.framework.client.sdk.ZequentClient;
+import com.zqnt.sdk.client.ZequentClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -49,7 +49,7 @@ public class ZequentConfig {
 ```java
 package com.yourcompany.service;
 
-import com.zequent.framework.client.sdk.ZequentClient;
+import com.zqnt.sdk.client.ZequentClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -78,7 +78,7 @@ If you want to use properties from `application.properties`:
 ```java
 package com.yourcompany.config;
 
-import com.zequent.framework.client.sdk.ZequentClient;
+import com.zqnt.sdk.client.ZequentClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -130,10 +130,10 @@ If you want to use the `ZequentClientProducer` directly (uses the same logic as 
 ```java
 package com.yourcompany.config;
 
-import com.zequent.framework.client.sdk.ZequentClient;
-import com.zequent.framework.client.sdk.ZequentClientProducer;
-import com.zequent.framework.client.sdk.config.GrpcClientConfig;
-import com.zequent.framework.client.sdk.config.ServiceConfig;
+import com.zqnt.sdk.client.ZequentClient;
+import com.zqnt.sdk.client.ZequentClientProducer;
+import com.zqnt.sdk.client.config.GrpcClientConfig;
+import com.zqnt.sdk.client.config.ServiceConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -194,23 +194,23 @@ public class ZequentConfig {
         // Create channels for each service
         java.util.List<io.grpc.ManagedChannel> channels = new java.util.ArrayList<>();
         io.grpc.ManagedChannel remoteControlChannel =
-                com.zequent.framework.client.sdk.channel.ChannelFactory.createChannel(config.getRemoteControlConfig());
+                com.zqnt.sdk.client.grpc.ChannelFactory.createChannel(config.getRemoteControlConfig());
         io.grpc.ManagedChannel missionAutonomyChannel =
-                com.zequent.framework.client.sdk.channel.ChannelFactory.createChannel(config.getMissionAutonomyConfig());
+                com.zqnt.sdk.client.grpc.ChannelFactory.createChannel(config.getMissionAutonomyConfig());
         io.grpc.ManagedChannel liveDataChannel =
-                com.zequent.framework.client.sdk.channel.ChannelFactory.createChannel(config.getLiveDataConfig());
+                com.zqnt.sdk.client.grpc.ChannelFactory.createChannel(config.getLiveDataConfig());
 
         channels.add(remoteControlChannel);
         channels.add(missionAutonomyChannel);
         channels.add(liveDataChannel);
 
         // Create service implementations
-        com.zequent.framework.client.sdk.remotecontrol.RemoteControl remoteControl =
-                com.zequent.framework.client.sdk.remotecontrol.impl.RemoteControlImpl.create(config, remoteControlChannel);
-        com.zequent.framework.client.sdk.missionautonomy.MissionAutonomy missionAutonomy =
-                com.zequent.framework.client.sdk.missionautonomy.MissionAutonomy.create(config, missionAutonomyChannel);
-        com.zequent.framework.client.sdk.livedata.LiveData liveData =
-                com.zequent.framework.client.sdk.livedata.LiveData.create(config, liveDataChannel);
+        com.zqnt.sdk.client.remotecontrol.application.RemoteControl remoteControl =
+                com.zqnt.sdk.client.remotecontrol.application.impl.RemoteControlImpl.create(config, remoteControlChannel);
+        com.zqnt.sdk.client.missionautonomy.application.MissionAutonomy missionAutonomy =
+                com.zqnt.sdk.client.missionautonomy.application.MissionAutonomy.create(config, missionAutonomyChannel);
+        com.zqnt.sdk.client.livedata.application.LiveData liveData =
+                com.zqnt.sdk.client.livedata.application.LiveData.create(config, liveDataChannel);
 
         // Return ZequentClient (exactly as ZequentClientProducer does)
         return new ZequentClient(config, remoteControl, missionAutonomy, liveData, channels);

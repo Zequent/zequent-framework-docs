@@ -32,16 +32,16 @@ Open `pom.xml` and add the Edge SDK and the GitHub Packages repository:
 <dependencies>
     <!-- Zequent Edge SDK -->
     <dependency>
-        <groupId>com.zequent.framework.edge.sdk</groupId>
-        <artifactId>java-edge-sdk</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <groupId>com.zqnt.sdk</groupId>
+        <artifactId>edge-sdk</artifactId>
+        <version>1.0.0</version>
     </dependency>
 </dependencies>
 
 <repositories>
     <repository>
         <id>github</id>
-        <url>https://maven.pkg.github.com/Zequent/zequent-framework</url>
+        <url>https://maven.pkg.github.com/Zequent/zqnt-edge-sdk-java</url>
     </repository>
 </repositories>
 ```
@@ -100,8 +100,8 @@ Create your adapter class. You only need to override the commands that your hard
 ```java
 package com.example.edge;
 
-import com.zequent.framework.edge.sdk.interfaces.EdgeAdapterService;
-import com.zequent.framework.edge.sdk.models.*;
+import com.zqnt.sdk.edge.adapter.application.EdgeAdapterService;
+import com.zqnt.sdk.edge.adapter.domains.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import java.util.concurrent.CompletableFuture;
@@ -158,10 +158,10 @@ If your device produces telemetry, inject the `LiveDataService` and push data:
 ```java
 package com.example.edge;
 
-import com.zequent.framework.edge.sdk.interfaces.LiveDataService;
-import com.zequent.framework.edge.sdk.models.TelemetryRequestData;
+import com.zqnt.sdk.edge.livedata.application.LiveDataService;
+import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
 import com.zequent.framework.common.proto.LiveDataType;
-import com.zequent.framework.utils.edge.sdk.dto.AssetTelemetryData;
+import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
@@ -194,10 +194,11 @@ public class TelemetryProducer {
             .build();
 
         liveDataService.produceTelemetryData(data)
-            .subscribe().with(
-                ignored -> log.debug("Telemetry sent for {}", sn),
-                err -> log.error("Telemetry error", err)
-            );
+            .thenRun(() -> log.debug("Telemetry sent for {}", sn))
+            .exceptionally(err -> {
+                log.error("Telemetry error", err);
+                return null;
+            });
     }
 }
 ```

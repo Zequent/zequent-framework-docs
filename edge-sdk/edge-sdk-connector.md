@@ -57,7 +57,7 @@ The `ConnectorServiceImpl` is created via a CDI producer method. It receives a `
 Register your device with the platform on startup:
 
 ```java
-import com.zequent.framework.utils.missionautonomy.dto.AssetDTO;
+import com.zqnt.utils.asset.domains.AssetDTO;
 
 AssetDTO asset = new AssetDTO();
 asset.setSn("YOUR_DEVICE_SN");

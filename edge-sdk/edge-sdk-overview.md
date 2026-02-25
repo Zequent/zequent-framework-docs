@@ -56,9 +56,9 @@ Add the Edge SDK dependency to your project:
 
 ```xml
 <dependency>
-  <groupId>com.zequent.framework.edge.sdk</groupId>
-  <artifactId>java-edge-sdk</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <groupId>com.zqnt.sdk</groupId>
+  <artifactId>edge-sdk</artifactId>
+  <version>1.0.0</version>
 </dependency>
 ```
 

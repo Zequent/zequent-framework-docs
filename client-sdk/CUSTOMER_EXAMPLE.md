@@ -19,9 +19,9 @@ Open `pom.xml` and add:
 
 ```xml
 <dependency>
-    <groupId>com.zequent.framework.client.sdk</groupId>
-    <artifactId>java-client-sdk</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <groupId>com.zqnt.sdk</groupId>
+    <artifactId>client-sdk</artifactId>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -30,9 +30,9 @@ Open `pom.xml` and add:
 ```bash
 # .env in project root
 REMOTE_CONTROL_SERVICE_HOST=localhost
-REMOTE_CONTROL_SERVICE_PORT=9091
+REMOTE_CONTROL_SERVICE_PORT=8002
 LIVE_DATA_SERVICE_HOST=localhost
-LIVE_DATA_SERVICE_PORT=9093
+LIVE_DATA_SERVICE_PORT=8003
 ```
 
 ### 4. Write Your First API
@@ -42,11 +42,12 @@ Create `src/main/java/com/example/DroneResource.java`:
 ```java
 package com.example;
 
-import com.zequent.framework.client.sdk.ZequentClient;
-import com.zequent.framework.client.sdk.models.*;
+import com.zqnt.sdk.client.ZequentClient;
+import com.zqnt.sdk.client.remotecontrol.domains.*;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import java.util.concurrent.CompletableFuture;
 
 @Path("/drone")
 @Produces(MediaType.APPLICATION_JSON)
@@ -57,11 +58,11 @@ public class DroneResource {
 
     @POST
     @Path("/takeoff")
-    public TakeoffResponse takeoff(
+    public CompletableFuture<TakeoffResponse> takeoff(
             @QueryParam("sn") String sn,
-            @QueryParam("lat") double lat,
-            @QueryParam("lon") double lon,
-            @QueryParam("alt") double alt) {
+            @QueryParam("lat") float lat,
+            @QueryParam("lon") float lon,
+            @QueryParam("alt") float alt) {
 
         var request = TakeoffRequest.builder()
             .sn(sn)
@@ -76,7 +77,7 @@ public class DroneResource {
 
     @POST
     @Path("/land")
-    public RemoteControlResponse land(@QueryParam("sn") String sn) {
+    public CompletableFuture<RemoteControlResponse> land(@QueryParam("sn") String sn) {
         var request = ReturnToHomeRequest.builder()
             .sn(sn)
             .build();
@@ -115,11 +116,11 @@ curl -X POST "http://localhost:8080/drone/land?sn=YOUR_DEVICE_SN"
 ```bash
 # Old .env
 REMOTE_CONTROL_SERVICE_HOST=localhost
-REMOTE_CONTROL_SERVICE_PORT=9091
+REMOTE_CONTROL_SERVICE_PORT=8002
 
 # New .env (Docker Compose)
 REMOTE_CONTROL_SERVICE_HOST=remote-control-service
-REMOTE_CONTROL_SERVICE_PORT=9091
+REMOTE_CONTROL_SERVICE_PORT=8002
 ```
 
 **No code change!** Just restart:
@@ -163,9 +164,11 @@ drone-app/
 ```java
 package com.example;
 
-import com.zequent.framework.client.sdk.ZequentClient;
+import com.zqnt.sdk.client.ZequentClient;
+import com.zqnt.sdk.client.remotecontrol.domains.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.List;
 
 @ApplicationScoped
 public class DroneFlightService {
@@ -180,9 +183,9 @@ public class DroneFlightService {
                 .sn(sn)
                 .latitude(waypoints.get(0).getLat())
                 .longitude(waypoints.get(0).getLon())
-                .altitude(100.0)
+                .altitude(100.0f)
                 .build()
-        );
+        ).join();
 
         if (!takeoffResponse.isSuccess()) {
             return false;
@@ -197,7 +200,7 @@ public class DroneFlightService {
                     .longitude(wp.getLon())
                     .altitude(wp.getAlt())
                     .build()
-            );
+            ).join();
 
             if (!goToResponse.isSuccess()) {
                 return false;
@@ -209,7 +212,7 @@ public class DroneFlightService {
             ReturnToHomeRequest.builder()
                 .sn(sn)
                 .build()
-        );
+        ).join();
 
         return rthResponse.isSuccess();
     }
@@ -221,8 +224,9 @@ public class DroneFlightService {
 ```java
 package com.example;
 
-import com.zequent.framework.client.sdk.ZequentClient;
-import com.zequent.framework.services.livedata.proto.*;
+import com.zqnt.sdk.client.ZequentClient;
+import com.zqnt.sdk.client.livedata.domains.StreamTelemetryRequest;
+import com.zqnt.sdk.client.livedata.domains.StreamTelemetryResponse;
 import jakarta.inject.Inject;
 import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;
@@ -239,8 +243,8 @@ public class TelemetryWebSocket {
     public void onOpen(Session session, @PathParam("sn") String sn) {
         log.info("Client connected: {}", sn);
 
-        var request = LiveDataStreamTelemetryRequest.newBuilder()
-            .addSn(sn)
+        var request = StreamTelemetryRequest.builder()
+            .sn(sn)
             .build();
 
         // Stream telemetry to WebSocket client
@@ -285,5 +289,5 @@ public class TelemetryWebSocket {
 ## Support
 
 -  Complete Docs: [CONFIGURATION.md](CONFIGURATION.md)
--  Quick Start: [QUICKSTART.md](../../../docs/QUICKSTART.md)
+-  Quick Start: [QUICKSTART.md](QUICKSTART.md)
 -  GitHub: https://github.com/Zequent/zequent-framework

@@ -40,7 +40,7 @@ This document provides a comprehensive reference for all request, response, and 
 
 The universal return type for all `EdgeAdapterService` commands.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -85,7 +85,7 @@ boolean isNotImplemented()  // returns true if resultType == NOT_IMPLEMENTED
 
 Reports the set of capabilities that an adapter currently supports.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -110,7 +110,7 @@ CurrentCapabilities.of(sn, AssetTypeEnum.ASSET_TYPE_DOCK, capabilitySet)
 
 Describes a single capability of the adapter.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -128,7 +128,7 @@ Describes a single capability of the adapter.
 
 Request to initiate takeoff.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -142,7 +142,7 @@ Request to initiate takeoff.
 
 Request to return the sub-asset (drone) to its home position.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -156,7 +156,7 @@ Request to return the sub-asset (drone) to its home position.
 
 Request to navigate to specific coordinates.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -170,7 +170,7 @@ Request to navigate to specific coordinates.
 
 Geographic coordinates.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -186,7 +186,7 @@ Geographic coordinates.
 
 Request to enter or exit manual control mode.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -199,7 +199,7 @@ Request to enter or exit manual control mode.
 
 A single frame of joystick/stick input for controlling the device in real-time.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -231,7 +231,7 @@ ManualControlInput input = ManualControlInput.builder()
 
 Request to point the camera at specific coordinates.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -248,7 +248,7 @@ Request to point the camera at specific coordinates.
 
 Request to switch the active camera lens.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -262,7 +262,7 @@ Request to switch the active camera lens.
 
 Request to adjust the camera zoom level.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -279,7 +279,7 @@ Request to adjust the camera zoom level.
 
 Request to start a video live stream.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -295,7 +295,7 @@ Request to start a video live stream.
 
 Request to stop a video live stream.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -311,7 +311,7 @@ Request to stop a video live stream.
 
 Top-level wrapper for pushing telemetry data to the Live Data Service.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -341,7 +341,7 @@ TelemetryRequestData data = TelemetryRequestData.builder()
 
 Telemetry for the primary asset (dock, station, or ground device).
 
-**Package:** `com.zequent.framework.utils.edge.sdk.dto`
+**Package:** `com.zqnt.utils.edge.sdk.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -405,7 +405,7 @@ Telemetry for the primary asset (dock, station, or ground device).
 
 Telemetry for a sub-asset (drone, vehicle).
 
-**Package:** `com.zequent.framework.utils.edge.sdk.dto`
+**Package:** `com.zqnt.utils.edge.sdk.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -483,7 +483,7 @@ Telemetry for a sub-asset (drone, vehicle).
 
 Represents a mission returned by the Mission Autonomy Service.
 
-**Package:** `com.zequent.framework.edge.sdk.models`
+**Package:** `com.zqnt.sdk.edge.adapter.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -498,7 +498,7 @@ Represents a mission returned by the Mission Autonomy Service.
 
 The edge adapter configuration interface, mapped from `application.properties` with `@ConfigMapping(prefix = "zequent.edge")`.
 
-**Package:** `com.zequent.framework.edge.sdk.config`
+**Package:** `com.zqnt.sdk.edge.config`
 
 | Method | Return Type | Property | Default | Description |
 |--------|-------------|----------|---------|-------------|

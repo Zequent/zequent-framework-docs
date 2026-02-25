@@ -10,9 +10,9 @@ Add the Zequent Client SDK to your `pom.xml`:
 
 ```xml
 <dependency>
-    <groupId>com.zequent.framework.client.sdk</groupId>
-    <artifactId>java-client-sdk</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <groupId>com.zqnt.sdk</groupId>
+    <artifactId>client-sdk</artifactId>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -25,22 +25,22 @@ Create a `.env` file in your project root (or configure via `application.propert
 ```bash
 # .env
 REMOTE_CONTROL_SERVICE_HOST=localhost
-REMOTE_CONTROL_SERVICE_PORT=9091
+REMOTE_CONTROL_SERVICE_PORT=8002
 
 MISSION_AUTONOMY_SERVICE_HOST=localhost
-MISSION_AUTONOMY_SERVICE_PORT=9092
+MISSION_AUTONOMY_SERVICE_PORT=8004
 
 LIVE_DATA_SERVICE_HOST=localhost
-LIVE_DATA_SERVICE_PORT=9093
+LIVE_DATA_SERVICE_PORT=8003
 ```
 
 Or copy one of our templates:
 ```bash
 # Development
-cp node_modules/zequent-client-sdk/.env.dev.example .env
+cp .env.dev.example .env
 
 # Production with Kubernetes
-cp node_modules/zequent-client-sdk/.env.production.example .env
+cp .env.production.example .env
 ```
 
 ## Step 3: Use the Client
@@ -52,11 +52,12 @@ Just inject `ZequentClient` - it's automatically configured!
 ```java
 package com.example.myapp;
 
-import com.zequent.framework.client.sdk.ZequentClient;
-import com.zequent.framework.client.sdk.models.*;
+import com.zqnt.sdk.client.ZequentClient;
+import com.zqnt.sdk.client.remotecontrol.domains.*;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import java.util.concurrent.CompletableFuture;
 
 @Path("/drone")
 public class DroneController {
@@ -66,12 +67,12 @@ public class DroneController {
 
     @POST
     @Path("/takeoff")
-    public TakeoffResponse takeoff() {
+    public CompletableFuture<TakeoffResponse> takeoff() {
         TakeoffRequest request = TakeoffRequest.builder()
             .sn("YOUR_DEVICE_SN")
-            .latitude(47.3769)
-            .longitude(8.5417)
-            .altitude(100.0)
+            .latitude(47.3769f)
+            .longitude(8.5417f)
+            .altitude(100.0f)
             .build();
 
         return client.remoteControl().takeoff(request);
@@ -79,7 +80,7 @@ public class DroneController {
 
     @POST
     @Path("/land")
-    public RemoteControlResponse land() {
+    public CompletableFuture<RemoteControlResponse> land() {
         ReturnToHomeRequest request = ReturnToHomeRequest.builder()
             .sn("YOUR_DEVICE_SN")
             .build();
@@ -96,8 +97,8 @@ If you're not using Quarkus/CDI:
 ```java
 package com.example.myapp;
 
-import com.zequent.framework.client.sdk.ZequentClient;
-import com.zequent.framework.client.sdk.config.ServiceConfig;
+import com.zqnt.sdk.client.ZequentClient;
+import com.zqnt.sdk.client.remotecontrol.domains.*;
 
 public class MyApp {
 
@@ -105,18 +106,18 @@ public class MyApp {
         try (ZequentClient client = ZequentClient.builder()
                 .remoteControl()
                     .host("localhost")
-                    .port(9091)
+                    .port(8002)
                     .done()
                 .build()) {
 
             var request = TakeoffRequest.builder()
                 .sn("YOUR_DEVICE_SN")
-                .latitude(47.3769)
-                .longitude(8.5417)
-                .altitude(100.0)
+                .latitude(47.3769f)
+                .longitude(8.5417f)
+                .altitude(100.0f)
                 .build();
 
-            var response = client.remoteControl().takeoff(request);
+            var response = client.remoteControl().takeoff(request).join();
             System.out.println("Success: " + response.isSuccess());
         }
     }
@@ -130,11 +131,12 @@ Here's a complete REST API using the Zequent SDK:
 ```java
 package com.example.drone;
 
-import com.zequent.framework.client.sdk.ZequentClient;
-import com.zequent.framework.client.sdk.models.*;
+import com.zqnt.sdk.client.ZequentClient;
+import com.zqnt.sdk.client.remotecontrol.domains.*;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import java.util.concurrent.CompletableFuture;
 
 @Path("/api/drone")
 @Produces(MediaType.APPLICATION_JSON)
@@ -147,11 +149,11 @@ public class DroneAPI {
     // Flight Operations
     @POST
     @Path("/{sn}/takeoff")
-    public TakeoffResponse takeoff(
+    public CompletableFuture<TakeoffResponse> takeoff(
             @PathParam("sn") String sn,
-            @QueryParam("lat") double latitude,
-            @QueryParam("lon") double longitude,
-            @QueryParam("alt") double altitude) {
+            @QueryParam("lat") float latitude,
+            @QueryParam("lon") float longitude,
+            @QueryParam("alt") float altitude) {
 
         var request = TakeoffRequest.builder()
             .sn(sn)
@@ -165,11 +167,11 @@ public class DroneAPI {
 
     @POST
     @Path("/{sn}/goto")
-    public RemoteControlResponse goTo(
+    public CompletableFuture<RemoteControlResponse> goTo(
             @PathParam("sn") String sn,
-            @QueryParam("lat") double latitude,
-            @QueryParam("lon") double longitude,
-            @QueryParam("alt") double altitude) {
+            @QueryParam("lat") float latitude,
+            @QueryParam("lon") float longitude,
+            @QueryParam("alt") float altitude) {
 
         var request = GoToRequest.builder()
             .sn(sn)
@@ -183,7 +185,7 @@ public class DroneAPI {
 
     @POST
     @Path("/{sn}/return-home")
-    public RemoteControlResponse returnToHome(@PathParam("sn") String sn) {
+    public CompletableFuture<RemoteControlResponse> returnToHome(@PathParam("sn") String sn) {
         var request = ReturnToHomeRequest.builder()
             .sn(sn)
             .build();
@@ -194,7 +196,7 @@ public class DroneAPI {
     // Dock Operations
     @POST
     @Path("/{sn}/dock/open-cover")
-    public RemoteControlResponse openCover(@PathParam("sn") String sn) {
+    public CompletableFuture<RemoteControlResponse> openCover(@PathParam("sn") String sn) {
         var request = DockOperationRequest.builder()
             .sn(sn)
             .build();
@@ -204,7 +206,7 @@ public class DroneAPI {
 
     @POST
     @Path("/{sn}/dock/start-charging")
-    public RemoteControlResponse startCharging(@PathParam("sn") String sn) {
+    public CompletableFuture<RemoteControlResponse> startCharging(@PathParam("sn") String sn) {
         var request = DockOperationRequest.builder()
             .sn(sn)
             .build();
@@ -221,7 +223,7 @@ public class DroneAPI {
 ```bash
 # .env
 REMOTE_CONTROL_SERVICE_HOST=localhost
-REMOTE_CONTROL_SERVICE_PORT=9091
+REMOTE_CONTROL_SERVICE_PORT=8002
 ```
 
 ```bash
@@ -233,7 +235,7 @@ mvn quarkus:dev
 ```bash
 # .env
 REMOTE_CONTROL_SERVICE_HOST=remote-control-service
-REMOTE_CONTROL_SERVICE_PORT=9091
+REMOTE_CONTROL_SERVICE_PORT=8002
 ```
 
 ```bash
@@ -297,11 +299,11 @@ All settings can be configured via environment variables:
 ```bash
 # Service Endpoints
 REMOTE_CONTROL_SERVICE_HOST=localhost
-REMOTE_CONTROL_SERVICE_PORT=9091
+REMOTE_CONTROL_SERVICE_PORT=8002
 MISSION_AUTONOMY_SERVICE_HOST=localhost
-MISSION_AUTONOMY_SERVICE_PORT=9092
+MISSION_AUTONOMY_SERVICE_PORT=8004
 LIVE_DATA_SERVICE_HOST=localhost
-LIVE_DATA_SERVICE_PORT=9093
+LIVE_DATA_SERVICE_PORT=8003
 
 # Resilience
 ZEQUENT_MAX_RETRY_ATTEMPTS=3
@@ -316,7 +318,7 @@ REMOTE_CONTROL_SERVICE_STORK_NAME=remote-control-service
 REMOTE_CONTROL_SERVICE_LOAD_BALANCER=ROUND_ROBIN  # or LEAST_REQUESTS, RANDOM
 ```
 
-See [CONFIGURATION.md](../../sdks/client/java-client-sdk/CONFIGURATION.md) for complete reference.
+See [CONFIGURATION.md](CONFIGURATION.md) for complete reference.
 
 ## Troubleshooting
 
@@ -359,7 +361,7 @@ cat .env
 ## Support
 
 For issues or questions:
-- Documentation: [CONFIGURATION.md](../../sdks/client/java-client-sdk/CONFIGURATION.md)
+- Documentation: [CONFIGURATION.md](CONFIGURATION.md)
 - GitHub Issues: https://github.com/Zequent/zequent-framework/issues
 - Email: support@zequent.com
 

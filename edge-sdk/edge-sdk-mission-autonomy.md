@@ -49,17 +49,17 @@ The implementation is created via a CDI producer that injects the `MutinyMission
 ```java
 public interface MissionAutonomyService {
 
-    Uni<MissionData> createMission(CreateMissionRequest createMissionRequest);
+    CompletableFuture<MissionDTO> createMission(CreateMissionRequest createMissionRequest);
 
-    Uni<MissionData> updateMission(UpdateMissionRequest updateMissionRequest);
+    CompletableFuture<MissionDTO> updateMission(UpdateMissionRequest updateMissionRequest);
 
-    Uni<MissionData> getMission(GetMissionRequest getRequest);
+    CompletableFuture<MissionDTO> getMission(GetMissionRequest getRequest);
 
-    Uni<TaskProtoDTO> getTask(GetTaskRequest getTaskRequest);
+    CompletableFuture<TaskDTO> getTask(GetTaskRequest getTaskRequest);
 
-    Uni<TaskProtoDTO> getTaskByFlightId(GetTaskRequest getTaskRequest);
+    CompletableFuture<TaskDTO> getTaskByFlightId(GetTaskRequest getTaskRequest);
 
-    Uni<SchedulerProtoDTO> getScheduler(GetSchedulerRequest getSchedulerRequest);
+    CompletableFuture<SchedulerDTO> getScheduler(GetSchedulerRequest getSchedulerRequest);
 }
 ```
 
@@ -81,10 +81,11 @@ GetMissionRequest request = GetMissionRequest.newBuilder()
     .build();
 
 missionAutonomyService.getMission(request)
-    .subscribe().with(
-        mission -> log.info("Mission: {} (ID: {})", mission.getName(), mission.getId()),
-        err -> log.error("Failed to get mission", err)
-    );
+    .thenAccept(mission -> log.info("Mission: {} (ID: {})", mission.getName(), mission.getId()))
+    .exceptionally(err -> {
+        log.error("Failed to get mission", err);
+        return null;
+    });
 ```
 
 ### Create a Mission
@@ -98,10 +99,11 @@ CreateMissionRequest request = CreateMissionRequest.newBuilder()
     .build();
 
 missionAutonomyService.createMission(request)
-    .subscribe().with(
-        mission -> log.info("Mission created: {}", mission.getId()),
-        err -> log.error("Failed to create mission", err)
-    );
+    .thenAccept(mission -> log.info("Mission created: {}", mission.getId()))
+    .exceptionally(err -> {
+        log.error("Failed to create mission", err);
+        return null;
+    });
 ```
 
 ### Update a Mission
@@ -115,10 +117,11 @@ UpdateMissionRequest request = UpdateMissionRequest.newBuilder()
     .build();
 
 missionAutonomyService.updateMission(request)
-    .subscribe().with(
-        mission -> log.info("Mission updated: {}", mission.getName()),
-        err -> log.error("Failed to update mission", err)
-    );
+    .thenAccept(mission -> log.info("Mission updated: {}", mission.getName()))
+    .exceptionally(err -> {
+        log.error("Failed to update mission", err);
+        return null;
+    });
 ```
 
 ### MissionData Model
@@ -146,10 +149,11 @@ GetTaskRequest request = GetTaskRequest.newBuilder()
     .build();
 
 missionAutonomyService.getTask(request)
-    .subscribe().with(
-        task -> log.info("Task retrieved: {}", task),
-        err -> log.error("Failed to get task", err)
-    );
+    .thenAccept(task -> log.info("Task retrieved: {}", task))
+    .exceptionally(err -> {
+        log.error("Failed to get task", err);
+        return null;
+    });
 ```
 
 ### Get a Task by Flight ID
@@ -162,10 +166,11 @@ GetTaskRequest request = GetTaskRequest.newBuilder()
     .build();
 
 missionAutonomyService.getTaskByFlightId(request)
-    .subscribe().with(
-        task -> log.info("Task for flight: {}", task),
-        err -> log.error("Failed to get task by flight ID", err)
-    );
+    .thenAccept(task -> log.info("Task for flight: {}", task))
+    .exceptionally(err -> {
+        log.error("Failed to get task by flight ID", err);
+        return null;
+    });
 ```
 
 ---
@@ -184,10 +189,11 @@ GetSchedulerRequest request = GetSchedulerRequest.newBuilder()
     .build();
 
 missionAutonomyService.getScheduler(request)
-    .subscribe().with(
-        scheduler -> log.info("Scheduler: {}", scheduler),
-        err -> log.error("Failed to get scheduler", err)
-    );
+    .thenAccept(scheduler -> log.info("Scheduler: {}", scheduler))
+    .exceptionally(err -> {
+        log.error("Failed to get scheduler", err);
+        return null;
+    });
 ```
 
 ---
@@ -200,7 +206,7 @@ Add to `application.properties` if not already present:
 
 ```properties
 quarkus.grpc.clients.mission-autonomy-service.host=localhost
-quarkus.grpc.clients.mission-autonomy-service.port=9092
+quarkus.grpc.clients.mission-autonomy-service.port=8004
 quarkus.grpc.clients.mission-autonomy-service.keep-alive-without-calls=true
 ```
 
@@ -234,21 +240,18 @@ public class MyAdapter implements EdgeAdapterService {
         return missionService.getTask(
                 GetTaskRequest.newBuilder().setTaskId(taskId).build()
             )
-            .chain(task -> {
+            .thenCompose(task -> {
                 // 2. Fetch waypoints from Connector
-                return Uni.createFrom().completionStage(
-                    connectorService.getWaypointsByTaskId(taskId)
-                );
+                return connectorService.getWaypointsByTaskId(taskId);
             })
-            .map(waypoints -> {
+            .thenApply(waypoints -> {
                 if (waypoints == null || waypoints.isEmpty()) {
                     return CommandResult.error("No waypoints found for task", taskId);
                 }
                 // 3. Generate flight plan and upload to device
                 generateFlightPlan(waypoints);
                 return CommandResult.success("Task prepared", tid, taskId);
-            })
-            .subscribeAsCompletionStage();
+            });
     }
 
     private void generateFlightPlan(List<WaypointDTO> waypoints) {
@@ -265,9 +268,9 @@ This pattern -- fetch task, fetch waypoints, generate plan -- is used by the ref
 
 | Method | Return Type | Description |
 |--------|-------------|-------------|
-| `createMission(CreateMissionRequest)` | `Uni<MissionData>` | Create a new mission |
-| `updateMission(UpdateMissionRequest)` | `Uni<MissionData>` | Update an existing mission |
-| `getMission(GetMissionRequest)` | `Uni<MissionData>` | Get mission by ID |
-| `getTask(GetTaskRequest)` | `Uni<TaskProtoDTO>` | Get task by ID |
-| `getTaskByFlightId(GetTaskRequest)` | `Uni<TaskProtoDTO>` | Get task by flight ID |
-| `getScheduler(GetSchedulerRequest)` | `Uni<SchedulerProtoDTO>` | Get scheduler by ID |
+| `createMission(CreateMissionRequest)` | `CompletableFuture<MissionDTO>` | Create a new mission |
+| `updateMission(UpdateMissionRequest)` | `CompletableFuture<MissionDTO>` | Update an existing mission |
+| `getMission(GetMissionRequest)` | `CompletableFuture<MissionDTO>` | Get mission by ID |
+| `getTask(GetTaskRequest)` | `CompletableFuture<TaskDTO>` | Get task by ID |
+| `getTaskByFlightId(GetTaskRequest)` | `CompletableFuture<TaskDTO>` | Get task by flight ID |
+| `getScheduler(GetSchedulerRequest)` | `CompletableFuture<SchedulerDTO>` | Get scheduler by ID |

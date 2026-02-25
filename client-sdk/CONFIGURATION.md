@@ -48,7 +48,7 @@ Each service (Remote Control, Mission Autonomy, Live Data) has the following set
 | Property | Environment Variable | Default | Description |
 |----------|---------------------|---------|-------------|
 | `zequent.remote-control-service.host` | `REMOTE_CONTROL_SERVICE_HOST` | `localhost` | Service hostname |
-| `zequent.remote-control-service.port` | `REMOTE_CONTROL_SERVICE_PORT` | `9091` | Service port |
+| `zequent.remote-control-service.port` | `REMOTE_CONTROL_SERVICE_PORT` | `8002` | Service port |
 | `zequent.remote-control-service.use-plaintext` | `REMOTE_CONTROL_SERVICE_USE_PLAINTEXT` | `true` | Use plaintext (no TLS) |
 | `zequent.remote-control-service.use-stork` | `REMOTE_CONTROL_SERVICE_USE_STORK` | `false` | Enable Stork service discovery |
 | `zequent.remote-control-service.stork-service-name` | `REMOTE_CONTROL_SERVICE_STORK_NAME` | `remote-control-service` | Stork service name |
@@ -59,7 +59,7 @@ Each service (Remote Control, Mission Autonomy, Live Data) has the following set
 | Property | Environment Variable | Default | Description |
 |----------|---------------------|---------|-------------|
 | `zequent.mission-autonomy-service.host` | `MISSION_AUTONOMY_SERVICE_HOST` | `localhost` | Service hostname |
-| `zequent.mission-autonomy-service.port` | `MISSION_AUTONOMY_SERVICE_PORT` | `9092` | Service port |
+| `zequent.mission-autonomy-service.port` | `MISSION_AUTONOMY_SERVICE_PORT` | `8004` | Service port |
 | `zequent.mission-autonomy-service.use-plaintext` | `MISSION_AUTONOMY_SERVICE_USE_PLAINTEXT` | `true` | Use plaintext |
 | `zequent.mission-autonomy-service.use-stork` | `MISSION_AUTONOMY_SERVICE_USE_STORK` | `false` | Enable Stork |
 | `zequent.mission-autonomy-service.stork-service-name` | `MISSION_AUTONOMY_SERVICE_STORK_NAME` | `mission-autonomy-service` | Stork service name |
@@ -70,7 +70,7 @@ Each service (Remote Control, Mission Autonomy, Live Data) has the following set
 | Property | Environment Variable | Default | Description |
 |----------|---------------------|---------|-------------|
 | `zequent.live-data-service.host` | `LIVE_DATA_SERVICE_HOST` | `localhost` | Service hostname |
-| `zequent.live-data-service.port` | `LIVE_DATA_SERVICE_PORT` | `9093` | Service port |
+| `zequent.live-data-service.port` | `LIVE_DATA_SERVICE_PORT` | `8003` | Service port |
 | `zequent.live-data-service.use-plaintext` | `LIVE_DATA_SERVICE_USE_PLAINTEXT` | `true` | Use plaintext |
 | `zequent.live-data-service.use-stork` | `LIVE_DATA_SERVICE_USE_STORK` | `false` | Enable Stork |
 | `zequent.live-data-service.stork-service-name` | `LIVE_DATA_SERVICE_STORK_NAME` | `live-data-service` | Stork service name |
@@ -94,7 +94,7 @@ Each service (Remote Control, Mission Autonomy, Live Data) has the following set
 ```bash
 # Local development - all services on localhost
 REMOTE_CONTROL_SERVICE_HOST=localhost
-REMOTE_CONTROL_SERVICE_PORT=9091
+REMOTE_CONTROL_SERVICE_PORT=8002
 REMOTE_CONTROL_SERVICE_USE_PLAINTEXT=true
 REMOTE_CONTROL_SERVICE_USE_STORK=false
 ```
@@ -110,7 +110,7 @@ mvn quarkus:dev
 ```bash
 # Docker Compose - use service names
 REMOTE_CONTROL_SERVICE_HOST=remote-control-service
-REMOTE_CONTROL_SERVICE_PORT=9091
+REMOTE_CONTROL_SERVICE_PORT=8002
 REMOTE_CONTROL_SERVICE_USE_PLAINTEXT=true
 REMOTE_CONTROL_SERVICE_USE_STORK=false
 ```
@@ -121,7 +121,7 @@ services:
   remote-control-service:
     image: zequent/remote-control:latest
     ports:
-      - "9091:9091"
+      - "8002:8002"
 
   my-app:
     image: my-app:latest
@@ -181,12 +181,12 @@ public class MyService {
     public void doSomething() {
         var request = TakeoffRequest.builder()
             .sn("YOUR_DEVICE_SN")
-            .latitude(47.3769)
-            .longitude(8.5417)
-            .altitude(100.0)
+            .latitude(47.3769f)
+            .longitude(8.5417f)
+            .altitude(100.0f)
             .build();
 
-        var response = client.remoteControl().takeoff(request);
+        var response = client.remoteControl().takeoff(request).join();
     }
 }
 ```
@@ -199,7 +199,7 @@ You can still use the builder if needed:
 ZequentClient client = ZequentClient.builder()
     .remoteControl()
         .host("custom-host")
-        .port(9091)
+        .port(8002)
         .done()
     .build();
 ```
@@ -258,9 +258,9 @@ REMOTE_CONTROL_SERVICE_HOST=custom-host mvn quarkus:dev
 ### 3. Validate Configuration
 Check logs on startup:
 ```
-Service 'remote-control' configured: host=localhost, port=9091, useStork=false
-Service 'mission-autonomy' configured: host=localhost, port=9092, useStork=false
-Service 'live-data' configured: host=localhost, port=9093, useStork=false
+Service 'remote-control' configured: host=localhost, port=8002, useStork=false
+Service 'mission-autonomy' configured: host=localhost, port=8004, useStork=false
+Service 'live-data' configured: host=localhost, port=8003, useStork=false
 ```
 
 ## Troubleshooting

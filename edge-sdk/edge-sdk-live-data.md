@@ -60,9 +60,9 @@ Key characteristics of the implementation:
 Map data from your device into the `TelemetryRequestData` POJO:
 
 ```java
-import com.zequent.framework.edge.sdk.models.TelemetryRequestData;
+import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
 import com.zequent.framework.common.proto.LiveDataType;
-import com.zequent.framework.utils.edge.sdk.dto.AssetTelemetryData;
+import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
 import java.time.LocalDateTime;
 
 TelemetryRequestData data = TelemetryRequestData.builder()
@@ -77,29 +77,14 @@ TelemetryRequestData data = TelemetryRequestData.builder()
 
 ### 2. Send It
 
-Reactive (Mutiny):
-
 ```java
-import com.zequent.framework.edge.sdk.interfaces.LiveDataService;
+import com.zqnt.sdk.edge.livedata.application.LiveDataService;
 
 private final LiveDataService liveDataService;
 
 public void sendTelemetry(TelemetryRequestData data) {
     liveDataService.produceTelemetryData(data)
-        .subscribe().with(
-            ignored -> log.debug("Telemetry sent for {}", data.getSn()),
-            err -> log.error("Error sending telemetry", err)
-        );
-}
-```
-
-Future-based (CompletionStage):
-
-```java
-public void sendTelemetry(TelemetryRequestData data) {
-    liveDataService.produceTelemetryData(data)
-        .subscribeAsCompletionStage()
-        .thenRun(() -> log.debug("Telemetry sent"))
+        .thenRun(() -> log.debug("Telemetry sent for {}", data.getSn()))
         .exceptionally(err -> {
             log.error("Error sending telemetry", err);
             return null;
@@ -126,10 +111,11 @@ ProduceTelemetryRequest protoRequest = ProduceTelemetryRequest.newBuilder()
     .build();
 
 liveDataService.produceTelemetry("YOUR_DEVICE_SN", protoRequest)
-    .subscribe().with(
-        ignored -> log.debug("Proto telemetry sent"),
-        err -> log.error("Error", err)
-    );
+    .thenRun(() -> log.debug("Proto telemetry sent"))
+    .exceptionally(err -> {
+        log.error("Error", err);
+        return null;
+    });
 ```
 
 Both APIs share the same underlying stream infrastructure, so there is no performance difference.
@@ -142,10 +128,11 @@ Both APIs share the same underlying stream infrastructure, so there is no perfor
 
 ```java
 liveDataService.closeStream("YOUR_DEVICE_SN")
-    .subscribe().with(
-        ignored -> log.info("Stream closed for device"),
-        err -> log.error("Error closing stream", err)
-    );
+    .thenRun(() -> log.info("Stream closed for device"))
+    .exceptionally(err -> {
+        log.error("Error closing stream", err);
+        return null;
+    });
 ```
 
 ### Close All Streams
@@ -154,10 +141,11 @@ Typically called during shutdown, but can be triggered manually:
 
 ```java
 liveDataService.closeAllStreams()
-    .subscribe().with(
-        ignored -> log.info("All streams closed"),
-        err -> log.error("Error closing streams", err)
-    );
+    .thenRun(() -> log.info("All streams closed"))
+    .exceptionally(err -> {
+        log.error("Error closing streams", err);
+        return null;
+    });
 ```
 
 The `LiveDataServiceImpl` also registers a `@PreDestroy` callback that automatically closes all streams with a 10-second timeout on application shutdown.

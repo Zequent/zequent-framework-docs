@@ -44,8 +44,8 @@ Create a CDI bean that implements `EdgeAdapterService`. The `@ApplicationScoped`
 ```java
 package com.example.edge;
 
-import com.zequent.framework.edge.sdk.interfaces.EdgeAdapterService;
-import com.zequent.framework.edge.sdk.models.*;
+import com.zqnt.sdk.edge.adapter.application.EdgeAdapterService;
+import com.zqnt.sdk.edge.adapter.domains.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.concurrent.CompletableFuture;
 
