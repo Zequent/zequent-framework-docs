@@ -4,10 +4,10 @@ This guide helps you set up and use the Zequent Framework with your applications
 
 ## Prerequisites
 
-- Java 25
-- Maven 3.9.9 or higher
-- Docker or Podman
-- GitHub account with access to Zequent platform
+- Java 17 or higher
+- Maven 3.6.X or higher
+- Docker, Podman or Kubernetes*
+- GitHub Account to acces public Packages and Container Images
 
 ## Setup
 
