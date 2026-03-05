@@ -176,11 +176,11 @@ services:
       - DATABASE_PASSWORD=postgres
 
       # OpenTelemetry (Optional - falls back to disabled if jaeger not running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
+      - OTEL_TRACES_ENABLED=true
+      - OTEL_METRICS_ENABLED=true
+      - OTEL_LOGS_ENABLED=true
+      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=connector-service
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -207,12 +207,11 @@ services:
       - CONNECTOR_SERVICE_HOST=connector-service
       - CONNECTOR_SERVICE_PORT=8010
 
-      # OpenTelemetry (Optional - falls back to disabled if jaeger not running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
+      - OTEL_TRACES_ENABLED=true
+      - OTEL_METRICS_ENABLED=true
+      - OTEL_LOGS_ENABLED=true
+      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=live-data-service
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -242,11 +241,11 @@ services:
       - CONNECTOR_SERVICE_PORT=8010
 
       # OpenTelemetry (Optional - falls back to disabled if jaeger not running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
+      - OTEL_TRACES_ENABLED=true
+      - OTEL_METRICS_ENABLED=true
+      - OTEL_LOGS_ENABLED=true
+      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=remote-control-service
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -271,11 +270,11 @@ services:
       - CONNECTOR_SERVICE_HOST=connector-service
       - CONNECTOR_SERVICE_PORT=8010
       # OpenTelemetry (Optional - falls back to disabled if jaeger not running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
+      - OTEL_TRACES_ENABLED=true
+      - OTEL_METRICS_ENABLED=true
+      - OTEL_LOGS_ENABLED=true
+      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=mission-autonomy-service
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -307,11 +306,11 @@ services:
       - CONNECTOR_SERVICE_PORT=8010
 
       # OpenTelemetry (Optional - falls back to disabled if jaeger not running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
+      - OTEL_TRACES_ENABLED=true
+      - OTEL_METRICS_ENABLED=true
+      - OTEL_LOGS_ENABLED=true
+      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=edge-adapter-dji
     restart: unless-stopped
     dns:
       - 8.8.8.8
