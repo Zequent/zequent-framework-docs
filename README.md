@@ -2,12 +2,33 @@
 
 This guide helps you set up and use the Zequent Framework with your applications.
 
+The framework ships **two language editions** of each SDK. Pick the one that
+matches your stack:
+
+| SDK              | Java                                                     | Python                                                                |
+|------------------|----------------------------------------------------------|-----------------------------------------------------------------------|
+| Edge SDK         | [edge-sdk-overview.md](edge-sdk/edge-sdk-overview.md)    | [edge-sdk-python-overview.md](edge-sdk/edge-sdk-python-overview.md)   |
+| Client SDK       | [QUICKSTART.md](client-sdk/QUICKSTART.md)                | [QUICKSTART_PYTHON.md](client-sdk/QUICKSTART_PYTHON.md)               |
+
+The Python SDKs target Python 3.12+, use `uv` for dependency management, and
+expose the same gRPC contract as the Java SDKs — your platform services don't
+care which language an adapter or client is written in.
+
 ## Prerequisites
+
+### Java track
 
 - Java 17 or higher
 - Maven 3.6.X or higher
 - Docker, Podman or Kubernetes*
 - GitHub Account to acces public Packages and Container Images
+
+### Python track
+
+- Python 3.12 or higher
+- [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`
+- Docker, Podman or Kubernetes*
+- GitHub Account to access private packages (when applicable)
 
 ## Setup
 
