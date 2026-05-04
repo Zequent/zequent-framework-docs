@@ -41,15 +41,12 @@ Quarkus maps property names to environment variable names by converting to upper
 
 These properties identify your edge adapter instance to the platform. They are mapped through the `EdgeClientConfig` interface using Quarkus `@ConfigMapping(prefix = "zequent.edge")`.
 
-| Property | Environment Variable | Required | Default | Description |
-|----------|---------------------|----------|---------|-------------|
-| `zequent.edge.endpoint` | `ZEQUENT_EDGE_ENDPOINT` | Yes | -- | The address this adapter listens on (host:port) |
-| `zequent.edge.sn` | `ZEQUENT_EDGE_SN` | Yes | -- | Serial number of the managed device |
-| `zequent.edge.asset-type` | `ZEQUENT_EDGE_ASSET_TYPE` | Yes | -- | Asset type enum value (see below) |
-| `zequent.edge.asset-vendor` | `ZEQUENT_EDGE_ASSET_VENDOR` | Yes | -- | Asset vendor enum value (see below) |
-| `zequent.edge.timeout` | `ZEQUENT_EDGE_TIMEOUT` | No | `30s` | Command execution timeout (Duration) |
-| `zequent.edge.max-retries` | `ZEQUENT_EDGE_MAX_RETRIES` | No | `3` | Maximum retry attempts for failed operations |
-| `zequent.edge.asset-id` | `ZEQUENT_EDGE_ASSET_ID` | No | -- | Platform asset ID (set after registration) |
+| Property | Environment Variable | Required | Description |
+|----------|---------------------|----------|-------------|
+| `zequent.edge.endpoint` | `EDGE_ADAPTER_TARGET_ENDPOINTS` | Yes | The address this adapter is reachable at (host:port) |
+| `zequent.edge.sn` | `ZEQUENT_EDGE_SN` | Yes | Serial number of the managed device |
+| `zequent.edge.asset-type` | `ZEQUENT_EDGE_ASSET_TYPE` | Yes | Asset type enum value (see below) |
+| `zequent.edge.asset-vendor` | `ZEQUENT_EDGE_ASSET_VENDOR` | Yes | Asset vendor enum value (see below) |
 
 ### Asset Type Values
 
@@ -68,15 +65,27 @@ These properties identify your edge adapter instance to the platform. They are m
 | `DJI` | DJI |
 | `VENDOR_UNKNOWN` | Unknown vendor |
 
+### Profile-specific Endpoint
+
+The `zequent.edge.endpoint` property is typically set per profile to reflect the correct address for each environment:
+
+```properties
+# Dev: direct local address
+%dev.zequent.edge.endpoint=localhost:9001
+
+# Docker: configurable via env, defaults to service name
+%docker.zequent.edge.endpoint=${EDGE_ADAPTER_TARGET_ENDPOINTS:edge-adapter-dji:9001}
+
+# Kubernetes: use K8s service name
+%k8s.zequent.edge.endpoint=edge-adapter-dji
+```
+
 ### Example
 
 ```properties
-zequent.edge.endpoint=localhost:9001
 zequent.edge.sn=YOUR_DEVICE_SN
 zequent.edge.asset-type=ASSET_TYPE_DOCK
 zequent.edge.asset-vendor=DJI
-zequent.edge.timeout=30s
-zequent.edge.max-retries=3
 ```
 
 ---
@@ -85,54 +94,52 @@ zequent.edge.max-retries=3
 
 The edge adapter connects to platform services (Live Data, Connector) via gRPC. Each client is configured using the standard Quarkus gRPC client properties.
 
-### Live Data Service
+The adapter connects to three platform services. In local dev, set host and port directly. In Docker/Kubernetes, service discovery is handled via Stork (see below).
 
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `quarkus.grpc.clients.live-data-service.host` | `QUARKUS_GRPC_CLIENTS_LIVE_DATA_SERVICE_HOST` | `localhost` | Hostname |
-| `quarkus.grpc.clients.live-data-service.port` | `QUARKUS_GRPC_CLIENTS_LIVE_DATA_SERVICE_PORT` | `8003` | Port |
-| `quarkus.grpc.clients.live-data-service.keep-alive-without-calls` | -- | `true` | Keep connection alive even without active RPCs |
+| Service | Environment Variable (Host) | Default Host | Environment Variable (Port) | Default Port |
+|---------|----------------------------|--------------|----------------------------|--------------|
+| Live Data | `LIVE_DATA_SERVICE_HOST` | `localhost` | `LIVE_DATA_SERVICE_PORT` | `8003` |
+| Connector | `CONNECTOR_SERVICE_HOST` | `localhost` | `CONNECTOR_SERVICE_PORT` | `8010` |
+| Mission Autonomy | `MISSION_AUTONOMY_SERVICE_HOST` | `localhost` | `MISSION_AUTONOMY_SERVICE_PORT` | `8004` |
 
-### Connector Service
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `quarkus.grpc.clients.connector-service.host` | `QUARKUS_GRPC_CLIENTS_CONNECTOR_SERVICE_HOST` | `localhost` | Hostname |
-| `quarkus.grpc.clients.connector-service.port` | `QUARKUS_GRPC_CLIENTS_CONNECTOR_SERVICE_PORT` | `8010` | Port |
-| `quarkus.grpc.clients.connector-service.keep-alive-without-calls` | -- | `true` | Keep connection alive even without active RPCs |
-
-### Example
+### Local Development
 
 ```properties
-# Local development
 quarkus.grpc.clients.live-data-service.host=localhost
 quarkus.grpc.clients.live-data-service.port=8003
-quarkus.grpc.clients.live-data-service.keep-alive-without-calls=true
 
 quarkus.grpc.clients.connector-service.host=localhost
 quarkus.grpc.clients.connector-service.port=8010
-quarkus.grpc.clients.connector-service.keep-alive-without-calls=true
+
+quarkus.grpc.clients.mission-autonomy-service.host=localhost
+quarkus.grpc.clients.mission-autonomy-service.port=8004
 ```
 
----
+### Stork-based Service Discovery (Docker / Kubernetes)
 
-## gRPC Server Configuration
+In `%docker` and `%k8s` profiles, gRPC clients use [Stork](https://smallrye.io/smallrye-stork/) for service discovery instead of direct host/port configuration.
 
-The edge adapter itself exposes a gRPC server for receiving commands from the platform.
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `quarkus.http.host` | `QUARKUS_HTTP_HOST` | `0.0.0.0` | Bind address |
-| `quarkus.http.port` | `QUARKUS_HTTP_PORT` | `9001` | HTTP/gRPC port |
-| `quarkus.grpc.server.use-separate-server` | -- | `false` | Use the same port for HTTP and gRPC |
-
-### Example
+**Docker (static list):**
 
 ```properties
-quarkus.http.host=0.0.0.0
-quarkus.http.port=9001
-quarkus.grpc.server.use-separate-server=false
+%docker.quarkus.grpc.clients.connector-service.name-resolver=stork
+%docker.stork.connector-service.service-discovery.type=static
+%docker.stork.connector-service.service-discovery.address-list=${CONNECTOR_SERVICE_HOST:connector-service}:${CONNECTOR_SERVICE_PORT:8010}
+%docker.stork.connector-service.load-balancer.type=round-robin
 ```
+
+**Kubernetes (dynamic discovery):**
+
+```properties
+%k8s.quarkus.grpc.clients.connector-service.name-resolver=stork
+%k8s.stork.connector-service.service-discovery.type=kubernetes
+%k8s.stork.connector-service.service-discovery.k8s-namespace=default
+%k8s.stork.connector-service.service-discovery.application=connector-service
+%k8s.stork.connector-service.service-discovery.refresh-period=5s
+%k8s.stork.connector-service.load-balancer.type=round-robin
+```
+
+The same pattern applies for `live-data-service` and `mission-autonomy-service`.
 
 ---
 
@@ -142,13 +149,19 @@ Many edge adapters use MQTT to communicate with the physical device (e.g., DJI d
 
 ### Broker Configuration
 
-Custom properties for the broker connection (used by adapter-specific code):
-
 | Property | Environment Variable | Description |
 |----------|---------------------|-------------|
-| `zequent.mqtt.broker.host` | `ZEQUENT_MQTT_BROKER_HOST` | MQTT broker hostname |
-| `zequent.mqtt.broker.username` | `ZEQUENT_MQTT_BROKER_USERNAME` | MQTT username |
-| `zequent.mqtt.broker.password` | `ZEQUENT_MQTT_BROKER_PASSWORD` | MQTT password |
+| `zequent.mqtt.broker.host` | `MQTT_BROKER_HOST` | MQTT broker hostname |
+| `zequent.mqtt.broker.username` | `MQTT_DOCK_USERNAME` | MQTT username for dock communication |
+| `zequent.mqtt.broker.password` | `MQTT_DOCK_PASSWORD` | MQTT password for dock communication |
+
+The reactive messaging channels use separate credentials for the cloud backend connection:
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `MQTT_USERNAME` | Username for cloud messaging channels |
+| `MQTT_PASSWORD` | Password for cloud messaging channels |
+| `MQTT_BROKER_PORT` | MQTT broker port (default: `8883`) |
 
 ### Channel Configuration Pattern
 
@@ -194,43 +207,35 @@ If your adapter needs to upload files (e.g., KMZ flight plans) to object storage
 
 | Property | Environment Variable | Description |
 |----------|---------------------|-------------|
-| `storage.endpoint` | `STORAGE_ENDPOINT` | S3-compatible endpoint URL |
-| `storage.access-key` | `STORAGE_ACCESS_KEY` | Access key |
-| `storage.secret-key` | `STORAGE_SECRET_KEY` | Secret key |
-| `storage.region` | `STORAGE_REGION` | Storage region |
-
-### Example
-
-```properties
-storage.endpoint=https://s3.amazonaws.com
-storage.access-key=YOUR_ACCESS_KEY
-storage.secret-key=YOUR_SECRET_KEY
-storage.region=eu-central-1
-```
+| `storage.username` | `S3_USERNAME` | S3 user identifier |
+| `storage.endpoint` | `S3_ENDPOINT` | S3-compatible endpoint URL |
+| `storage.access-key` | `S3_ACCESS_KEY` | Access key |
+| `storage.secret-key` | `S3_SECRET_KEY` | Secret key |
+| `storage.region` | `S3_REGION` | Storage region |
+| `storage.bucket` | `S3_BUCKET` | Target bucket name |
+| `storage.object-key-prefix` | `S3_OBJECT_KEY_PREFIX` | Prefix for all object keys |
 
 ---
 
 ## Monitoring and Observability
 
+All monitoring properties are disabled by default and should be enabled via environment variables.
+
 | Property | Environment Variable | Default | Description |
 |----------|---------------------|---------|-------------|
-| `quarkus.micrometer.enabled` | -- | `true` | Enable Micrometer metrics |
-| `quarkus.micrometer.export.prometheus.enabled` | -- | `true` | Enable Prometheus exporter |
-| `quarkus.micrometer.export.prometheus.path` | -- | `/q/metrics` | Metrics endpoint path |
-| `quarkus.otel.traces.enabled` | -- | `true` | Enable OpenTelemetry tracing |
-| `quarkus.otel.metrics.enabled` | -- | `true` | Enable OpenTelemetry metrics |
-| `quarkus.otel.logs.enabled` | -- | `true` | Enable OpenTelemetry log export |
-| `quarkus.otel.exporter.otlp.endpoint` | `QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4317` | OTLP collector endpoint |
-
-### Example
-
-```properties
-quarkus.micrometer.enabled=true
-quarkus.micrometer.export.prometheus.enabled=true
-quarkus.micrometer.export.prometheus.path=/q/metrics
-quarkus.otel.traces.enabled=true
-quarkus.otel.exporter.otlp.endpoint=http://localhost:4317
-```
+| `quarkus.micrometer.enabled` | `MICROMETER_ENABLED` | `false` | Enable Micrometer metrics |
+| `quarkus.micrometer.export.prometheus.enabled` | `PROMETHEUS_ENABLED` | `false` | Enable Prometheus exporter |
+| `quarkus.micrometer.export.prometheus.path` | `PROMETHEUS_PATH` | `/q/metrics` | Metrics endpoint path |
+| `quarkus.micrometer.binder.jvm` | `MICROMETER_BINDER_JVM` | `false` | Enable JVM metrics |
+| `quarkus.micrometer.binder.system` | `MICROMETER_BINDER_SYSTEM` | `false` | Enable system metrics |
+| `quarkus.micrometer.binder.http-server.enabled` | `MICROMETER_BINDER_HTTP_SERVER_ENABLED` | `false` | Enable HTTP server metrics |
+| `quarkus.micrometer.binder.grpc-server.enabled` | `MICROMETER_BINDER_GRPC_SERVER_ENABLED` | `false` | Enable gRPC server metrics |
+| `quarkus.micrometer.binder.grpc-client.enabled` | `MICROMETER_BINDER_GRPC_CLIENT_ENABLED` | `false` | Enable gRPC client metrics |
+| `quarkus.otel.traces.enabled` | `OTEL_TRACES_ENABLED` | `false` | Enable OpenTelemetry tracing |
+| `quarkus.otel.metrics.enabled` | `OTEL_METRICS_ENABLED` | `false` | Enable OpenTelemetry metrics |
+| `quarkus.otel.logs.enabled` | `OTEL_LOGS_ENABLED` | `false` | Enable OpenTelemetry log export |
+| `quarkus.otel.exporter.otlp.endpoint` | `OTEL_ENDPOINT` | `http://jaeger-all-in-one:4317` | OTLP collector endpoint |
+| `quarkus.otel.resource.attributes` | `OTEL_RESOURCE_ATTRIBUTES` | `service.name=edge-adapter-dji` | OTel resource attributes |
 
 ---
 
@@ -239,28 +244,18 @@ quarkus.otel.exporter.otlp.endpoint=http://localhost:4317
 ### Local Development
 
 ```properties
-# application.properties
-quarkus.http.port=9001
-
-zequent.edge.endpoint=localhost:9001
 zequent.edge.sn=YOUR_DEVICE_SN
-zequent.edge.asset-type=ASSET_TYPE_DOCK
-zequent.edge.asset-vendor=DJI
-
-quarkus.grpc.clients.live-data-service.host=localhost
-quarkus.grpc.clients.live-data-service.port=8003
-
-quarkus.grpc.clients.connector-service.host=localhost
-quarkus.grpc.clients.connector-service.port=8010
 
 quarkus.redis.hosts=redis://localhost:6379
 
-quarkus.devservices.enabled=false
+zequent.mqtt.broker.host=your-broker.example.com
 ```
+
+The gRPC client endpoints default to `localhost` on their respective ports in dev mode, so no extra configuration is needed unless the services run on different hosts.
 
 ### Docker Compose
 
-Override via environment variables in your compose file:
+The `docker` profile uses Stork for service discovery. Set host/port via the short env var names:
 
 ```yaml
 services:
@@ -269,13 +264,20 @@ services:
     ports:
       - "9001:9001"
     environment:
-      - ZEQUENT_EDGE_ENDPOINT=edge-adapter:9001
+      - EDGE_ADAPTER_TARGET_ENDPOINTS=edge-adapter:9001
       - ZEQUENT_EDGE_SN=YOUR_DEVICE_SN
-      - QUARKUS_GRPC_CLIENTS_LIVE_DATA_SERVICE_HOST=live-data-service
-      - QUARKUS_GRPC_CLIENTS_LIVE_DATA_SERVICE_PORT=8003
-      - QUARKUS_GRPC_CLIENTS_CONNECTOR_SERVICE_HOST=connector-service
-      - QUARKUS_GRPC_CLIENTS_CONNECTOR_SERVICE_PORT=8080
+      - CONNECTOR_SERVICE_HOST=connector-service
+      - CONNECTOR_SERVICE_PORT=8010
+      - LIVE_DATA_SERVICE_HOST=live-data-service
+      - LIVE_DATA_SERVICE_PORT=8003
+      - MISSION_AUTONOMY_SERVICE_HOST=mission-autonomy-service
+      - MISSION_AUTONOMY_SERVICE_PORT=8004
       - QUARKUS_REDIS_HOSTS=redis://redis:6379
+      - MQTT_BROKER_HOST=your-broker.example.com
+      - MQTT_USERNAME=backend
+      - MQTT_PASSWORD=secret
+      - MQTT_DOCK_USERNAME=dock
+      - MQTT_DOCK_PASSWORD=secret
 ```
 
 ### Kubernetes

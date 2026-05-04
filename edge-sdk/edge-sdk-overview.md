@@ -42,6 +42,7 @@ Communicates with the Mission Autonomy Service over gRPC to create, update, and 
 
 | Document | Description |
 |----------|-------------|
+| [DJI Adapter Deployment](edge-sdk-dji-adapter-deployment.md) | Deploy the DJI edge adapter container via Docker or Kubernetes |
 | [Quickstart](edge-sdk-quickstart.md) | Get a new edge adapter project up and running in minutes |
 | [Configuration](edge-sdk-configuration.md) | All configuration properties and environment variable mappings |
 | [Edge Adapter](edge-sdk-adapter.md) | Implementing the EdgeAdapterService interface |
