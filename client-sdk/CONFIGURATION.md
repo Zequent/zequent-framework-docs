@@ -76,6 +76,55 @@ Each service (Remote Control, Mission Autonomy, Live Data) has the following set
 | `zequent.live-data-service.stork-service-name` | `LIVE_DATA_SERVICE_STORK_NAME` | `live-data-service` | Stork service name |
 | `zequent.live-data-service.load-balancer-type` | `LIVE_DATA_SERVICE_LOAD_BALANCER` | `ROUND_ROBIN` | Load balancer type |
 
+#### Connector Service
+
+The Connector Service handles device connectivity and protocol translation. It is consumed internally by Mission Autonomy and Live Data services via gRPC (port 8010, HTTP and gRPC share the same port).
+
+**Connection (used by internal services connecting to connector-service):**
+
+| Property | Environment Variable | Default | Description |
+|----------|---------------------|---------|-------------|
+| `grpc.clients.connector-service.host` | `CONNECTOR_SERVICE_HOST` | `localhost` | Service hostname |
+| `grpc.clients.connector-service.port` | `CONNECTOR_SERVICE_PORT` | `8010` | gRPC port (shared with HTTP) |
+
+**Redis:**
+
+| Property | Environment Variable | Default | Description |
+|----------|---------------------|---------|-------------|
+| `quarkus.redis.hosts` | `REDIS_URL` | `redis://redis:6379` | Redis connection URL |
+
+**Database (required for `docker` and `k8s` profiles):**
+
+| Property | Environment Variable | Default | Description |
+|----------|---------------------|---------|-------------|
+| `quarkus.datasource.jdbc.url` | `DATABASE_URL` | `jdbc:postgresql://zequent_db:5432/zequent_db` | JDBC connection URL |
+| `quarkus.datasource.reactive.url` | `DATABASE_REACTIVE_URL` | `postgresql://zequent_db:5432/zequent_db` | Reactive (Vert.x) connection URL |
+| `quarkus.datasource.username` | `DATABASE_USER` | `postgres` | Database username |
+| `quarkus.datasource.password` | `DATABASE_PASSWORD` | `postgres` | Database password |
+
+**Monitoring (Micrometer / Prometheus):**
+
+| Property | Environment Variable | Default | Description |
+|----------|---------------------|---------|-------------|
+| `quarkus.micrometer.enabled` | `MICROMETER_ENABLED` | `false` | Enable Micrometer metrics |
+| `quarkus.micrometer.export.prometheus.enabled` | `PROMETHEUS_ENABLED` | `false` | Enable Prometheus endpoint |
+| `quarkus.micrometer.export.prometheus.path` | `PROMETHEUS_PATH` | `/q/metrics` | Prometheus scrape path |
+| `quarkus.micrometer.binder.jvm` | `MICROMETER_BINDER_JVM` | `false` | JVM metrics |
+| `quarkus.micrometer.binder.system` | `MICROMETER_BINDER_SYSTEM` | `false` | System metrics |
+| `quarkus.micrometer.binder.http-server.enabled` | `HTTP_SERVER_ENABLED` | `false` | HTTP server metrics |
+| `quarkus.micrometer.binder.grpc-server.enabled` | `GRPC_SERVER_ENABLED` | `false` | gRPC server metrics |
+| `quarkus.micrometer.binder.grpc-client.enabled` | `GRPC_CLIENT_ENABLED` | `false` | gRPC client metrics |
+
+**OpenTelemetry:**
+
+| Property | Environment Variable | Default | Description |
+|----------|---------------------|---------|-------------|
+| `quarkus.otel.traces.enabled` | `OTEL_TRACES_ENABLED` | `false` | Enable distributed tracing |
+| `quarkus.otel.metrics.enabled` | `OTEL_METRICS_ENABLED` | `false` | Enable OTEL metrics export |
+| `quarkus.otel.logs.enabled` | `OTEL_LOGS_ENABLED` | `false` | Enable OTEL log export |
+| `quarkus.otel.exporter.otlp.endpoint` | `OTEL_ENDPOINT` | `http://jaeger-all-in-one:4317` | OTLP collector endpoint |
+| `quarkus.otel.resource.attributes` | `OTEL_RESOURCE_ATTRIBUTES` | `service.name=connector-service` | OTEL resource attributes |
+
 ### Global Resilience Settings
 
 | Property | Environment Variable | Default | Description |
@@ -113,6 +162,15 @@ REMOTE_CONTROL_SERVICE_HOST=remote-control-service
 REMOTE_CONTROL_SERVICE_PORT=8002
 REMOTE_CONTROL_SERVICE_USE_PLAINTEXT=true
 REMOTE_CONTROL_SERVICE_USE_STORK=false
+
+# Connector Service (internal - consumed by mission-autonomy and live-data)
+CONNECTOR_SERVICE_HOST=connector-service
+CONNECTOR_SERVICE_PORT=8010
+REDIS_URL=redis://redis:6379
+DATABASE_URL=jdbc:postgresql://zequent_db:5432/zequent_db
+DATABASE_REACTIVE_URL=postgresql://zequent_db:5432/zequent_db
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
 ```
 
 **docker-compose.yml:**
@@ -261,6 +319,7 @@ Check logs on startup:
 Service 'remote-control' configured: host=localhost, port=8002, useStork=false
 Service 'mission-autonomy' configured: host=localhost, port=8004, useStork=false
 Service 'live-data' configured: host=localhost, port=8003, useStork=false
+Service 'connector' configured: host=localhost, port=8010
 ```
 
 ## Troubleshooting
