@@ -210,7 +210,7 @@ public class TelemetryProducer {
 Before running your adapter, start the required platform services. Use the provided Docker Compose file from the framework root or create a minimal one:
 
 ```yaml
-# docker-compose.yml
+# docker-compose.local.yml
 version: "3.8"
 
 services:

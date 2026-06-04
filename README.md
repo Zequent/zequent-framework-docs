@@ -672,7 +672,7 @@ MISSION_AUTONOMY_PORT=8004
 
 **Example with custom ports:**
 ```yaml
-# podman-compose.yml
+# docker-compose.local.yml
 services:
   connector-service:
     ports:
