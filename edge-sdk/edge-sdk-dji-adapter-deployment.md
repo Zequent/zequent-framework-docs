@@ -13,6 +13,20 @@ The DJI Edge Adapter connects DJI docking stations and their sub-assets (drones)
 
 ---
 
+## Supported DJI Firmware Versions
+
+The DJI Edge Adapter has been tested and verified against the following DJI firmware major versions:
+
+| Firmware Version | Status |
+|-----------------|--------|
+| v13.x.x | Supported |
+| v14.x.x | Supported |
+| v17.x.x | Supported |
+
+> **Note:** Other firmware versions may work but are not officially validated. Ensure your DJI docking station and drone firmware are updated to one of the supported versions before deploying the adapter.
+
+---
+
 ## Environment Variables
 
 ### Required
