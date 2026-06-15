@@ -142,11 +142,11 @@ services:
 
   prometheus:
     image: docker.io/prom/prometheus:latest
-    container_name: prometheus
+    container_name: zqnt-prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus-local.yml:/etc/prometheus/prometheus.yml:ro
+      - ./services/admin-console/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -160,20 +160,23 @@ services:
 
   grafana:
     image: docker.io/grafana/grafana:latest
-    container_name: grafana
+    container_name: zqnt-grafana
     depends_on:
       - prometheus
     ports:
       - "3000:3000"
     environment:
+      - GF_PATHS_CONFIG=/etc/grafana/grafana.ini
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=zequent2024
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
     volumes:
+      - ./services/admin-console/monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./services/admin-console/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./services/admin-console/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
 
   # ==================== CORE SERVICES ====================
   connector-service:
@@ -196,12 +199,12 @@ services:
       - DATABASE_USER=postgres
       - DATABASE_PASSWORD=postgres
 
-      # OpenTelemetry (Optional - falls back to disabled if jaeger not running)
-      - OTEL_TRACES_ENABLED=true
-      - OTEL_METRICS_ENABLED=true
-      - OTEL_LOGS_ENABLED=true
-      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
-      - OTEL_RESOURCE_ATTRIBUTES=service.name=connector-service
+      # OpenTelemetry (disabled by default — enable when Jaeger is running)
+      - OTEL_TRACES_ENABLED=false
+      - OTEL_METRICS_ENABLED=false
+      - OTEL_LOGS_ENABLED=false
+      - MICROMETER_ENABLED=false
+      - PROMETHEUS_ENABLED=false
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -228,11 +231,12 @@ services:
       - CONNECTOR_SERVICE_HOST=connector-service
       - CONNECTOR_SERVICE_PORT=8010
 
-      - OTEL_TRACES_ENABLED=true
-      - OTEL_METRICS_ENABLED=true
-      - OTEL_LOGS_ENABLED=true
-      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
-      - OTEL_RESOURCE_ATTRIBUTES=service.name=live-data-service
+      # OpenTelemetry (disabled by default — enable when Jaeger is running)
+      - OTEL_TRACES_ENABLED=false
+      - OTEL_METRICS_ENABLED=false
+      - OTEL_LOGS_ENABLED=false
+      - MICROMETER_ENABLED=false
+      - PROMETHEUS_ENABLED=false
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -261,12 +265,12 @@ services:
       - CONNECTOR_SERVICE_HOST=connector-service
       - CONNECTOR_SERVICE_PORT=8010
 
-      # OpenTelemetry (Optional - falls back to disabled if jaeger not running)
-      - OTEL_TRACES_ENABLED=true
-      - OTEL_METRICS_ENABLED=true
-      - OTEL_LOGS_ENABLED=true
-      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
-      - OTEL_RESOURCE_ATTRIBUTES=service.name=remote-control-service
+      # OpenTelemetry (disabled by default — enable when Jaeger is running)
+      - OTEL_TRACES_ENABLED=false
+      - OTEL_METRICS_ENABLED=false
+      - OTEL_LOGS_ENABLED=false
+      - MICROMETER_ENABLED=false
+      - PROMETHEUS_ENABLED=false
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -290,12 +294,12 @@ services:
       # gRPC Clients (uses Stork with static discovery)
       - CONNECTOR_SERVICE_HOST=connector-service
       - CONNECTOR_SERVICE_PORT=8010
-      # OpenTelemetry (Optional - falls back to disabled if jaeger not running)
-      - OTEL_TRACES_ENABLED=true
-      - OTEL_METRICS_ENABLED=true
-      - OTEL_LOGS_ENABLED=true
-      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
-      - OTEL_RESOURCE_ATTRIBUTES=service.name=mission-autonomy-service
+      # OpenTelemetry (disabled by default — enable when Jaeger is running)
+      - OTEL_TRACES_ENABLED=false
+      - OTEL_METRICS_ENABLED=false
+      - OTEL_LOGS_ENABLED=false
+      - MICROMETER_ENABLED=false
+      - PROMETHEUS_ENABLED=false
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -306,10 +310,12 @@ services:
   edge-adapter-dji:
     image: ghcr.io/zequent/zqnt-edge-adapter-dji:latest
     pull_policy: always
+    container_name: edge-adapter-dji
     depends_on:
       - redis
       - live-data-service
       - connector-service
+      - mission-autonomy-service
     ports:
       - "9001:9001"
     environment:
@@ -320,18 +326,28 @@ services:
       # Redis
       - QUARKUS_REDIS_HOSTS=redis://redis:6379
 
+      # MQTT Broker (required — set to your broker values)
+      - ZQNT_MQTT_BROKER_HOST=your-broker.example.com
+      - ZQNT_MQTT_BROKER_PORT=8883
+      - ZQNT_MQTT_USERNAME=<mqtt-backend-username>
+      - ZQNT_MQTT_PASSWORD=<mqtt-backend-password>
+      - ZQNT_MQTT_DOCK_USERNAME=<mqtt-dock-username>
+      - ZQNT_MQTT_DOCK_PASSWORD=<mqtt-dock-password>
+
       # gRPC Clients
-      - LIVE_DATA_SERVICE_HOST=live-data-service
-      - LIVE_DATA_SERVICE_PORT=8003
       - CONNECTOR_SERVICE_HOST=connector-service
       - CONNECTOR_SERVICE_PORT=8010
+      - LIVE_DATA_SERVICE_HOST=live-data-service
+      - LIVE_DATA_SERVICE_PORT=8003
+      - MISSION_AUTONOMY_SERVICE_HOST=mission-autonomy-service
+      - MISSION_AUTONOMY_SERVICE_PORT=8004
 
-      # OpenTelemetry (Optional - falls back to disabled if jaeger not running)
-      - OTEL_TRACES_ENABLED=true
-      - OTEL_METRICS_ENABLED=true
-      - OTEL_LOGS_ENABLED=true
-      - OTEL_ENDPOINT=http://jaeger-all-in-one:4317
-      - OTEL_RESOURCE_ATTRIBUTES=service.name=edge-adapter-dji
+      # OpenTelemetry (disabled by default — enable when Jaeger is running)
+      - OTEL_TRACES_ENABLED=false
+      - OTEL_METRICS_ENABLED=false
+      - OTEL_LOGS_ENABLED=false
+      - MICROMETER_ENABLED=false
+      - PROMETHEUS_ENABLED=false
     restart: unless-stopped
     dns:
       - 8.8.8.8
@@ -367,14 +383,18 @@ This guide provides a complete overview of all configurable environment variable
 
 1. Copy the example file:
    ```bash
-   cp .env.custom.example .env.custom
+   cp .env.example .env
    ```
 
-2. Edit `.env.custom` with your deployment-specific values
+2. Edit `.env` with your deployment-specific values
 
 3. Start the services:
    ```bash
-   podman-compose --env-file .env.custom up
+   # Docker
+   docker-compose -f docker-compose.local.yml up -d
+
+   # Podman
+   podman-compose -f docker-compose.local.yml up -d
    ```
 
 ---
@@ -511,9 +531,9 @@ OpenTelemetry provides distributed tracing, metrics export, and structured loggi
 
 | Variable | Description | Default | Impact |
 |----------|-------------|---------|--------|
-| `OTEL_TRACES_ENABLED` | Enable distributed tracing | `true` | Traces gRPC calls, HTTP requests, database queries |
-| `OTEL_METRICS_ENABLED` | Export metrics via OTLP | `true` | Exports performance metrics to collector |
-| `OTEL_LOGS_ENABLED` | Forward logs via OTLP | `true` | Structured logs to centralized system |
+| `OTEL_TRACES_ENABLED` | Enable distributed tracing | `false` | Traces gRPC calls, HTTP requests, database queries |
+| `OTEL_METRICS_ENABLED` | Export metrics via OTLP | `false` | Exports performance metrics to collector |
+| `OTEL_LOGS_ENABLED` | Forward logs via OTLP | `false` | Structured logs to centralized system |
 | `OTEL_ENDPOINT` | OTLP collector endpoint | `http://jaeger-all-in-one:4317` | Target for telemetry data |
 
 **Visualize traces in Jaeger:**
@@ -543,8 +563,8 @@ Micrometer provides JVM, HTTP, and gRPC metrics with Prometheus export.
 
 | Variable | Description | Default | Endpoint |
 |----------|-------------|---------|----------|
-| `MICROMETER_ENABLED` | Enable Micrometer metrics collection | `true` | - |
-| `PROMETHEUS_ENABLED` | Expose Prometheus metrics endpoint | `true` | `/q/metrics` |
+| `MICROMETER_ENABLED` | Enable Micrometer metrics collection | `false` | - |
+| `PROMETHEUS_ENABLED` | Expose Prometheus metrics endpoint | `false` | `/q/metrics` |
 | `PROMETHEUS_PATH` | Custom metrics endpoint path | `/q/metrics` | - |
 
 **Detailed metrics binders (optional):**
@@ -763,12 +783,12 @@ curl http://jaeger-all-in-one:4317
 
 ## Related Documentation
 
-- [gRPC Configuration Guide](GRPC_CONFIGURATION.md)
-- [Load Balancing Guide](LOAD_BALANCING_GUIDE.md)
-- [Docker Compose Configuration](podman-compose.yml)
-- [Application Properties](services/*/src/main/resources/application.properties)
+- [DJI Adapter Deployment](edge-sdk/edge-sdk-dji-adapter-deployment.md)
+- [Edge SDK Overview](edge-sdk/edge-sdk-overview.md)
+- [Client SDK Quickstart](client-sdk/QUICKSTART.md)
+- [Application Properties](../services/*/src/main/resources/application.properties)
 
 ---
 
-**Last Updated**: 2025-02-22
-**Framework Version**: Latest
+**Last Updated**: 2026-06-15
+**Framework Version**: 1.2.0

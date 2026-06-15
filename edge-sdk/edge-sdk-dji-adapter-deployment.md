@@ -85,7 +85,7 @@ The DJI Edge Adapter has been tested and verified against the following DJI firm
 ```yaml
 services:
   edge-adapter-dji:
-    image: ghcr.io/zequent/edge-adapter-dji:latest
+    image: ghcr.io/zequent/zqnt-edge-adapter-dji:latest
     ports:
       - "9001:9001"
     environment:
@@ -104,7 +104,7 @@ services:
       - MISSION_AUTONOMY_SERVICE_HOST=mission-autonomy-service
       - MISSION_AUTONOMY_SERVICE_PORT=8004
       - QUARKUS_REDIS_HOSTS=redis://redis:6379
-      # S3 (optional - required for mission file uploads)
+      # S3 (optional — required for mission file uploads)
       - S3_ENDPOINT=https://s3.amazonaws.com
       - S3_REGION=eu-central-1
       - S3_BUCKET=zqnt
@@ -134,7 +134,7 @@ spec:
     spec:
       containers:
         - name: edge-adapter-dji
-          image: ghcr.io/zequent/edge-adapter-dji:latest
+          image: ghcr.io/zequent/zqnt-edge-adapter-dji:latest
           ports:
             - containerPort: 9001
           env:
