@@ -20,8 +20,8 @@ Open `pom.xml` and add:
 ```xml
 <dependency>
     <groupId>com.zqnt.sdk</groupId>
-    <artifactId>client-sdk</artifactId>
-    <version>1.0.0</version>
+    <artifactId>client-java-sdk</artifactId>
+    <version>1.2.4</version>
 </dependency>
 ```
 
@@ -87,10 +87,10 @@ public class DroneResource {
 }
 ```
 
-### 5. Start!
+### 5. Start Your Application Container
 
 ```bash
-mvn quarkus:dev
+docker run --env-file .env --network host your-registry/drone-app:latest
 ```
 
 ### 6. Test
@@ -125,7 +125,7 @@ REMOTE_CONTROL_SERVICE_PORT=8002
 
 **No code change!** Just restart:
 ```bash
-docker-compose up
+docker compose up
 ```
 
 ### Staging → Production (Kubernetes)
@@ -290,4 +290,4 @@ public class TelemetryWebSocket {
 
 -  Complete Docs: [CONFIGURATION.md](CONFIGURATION.md)
 -  Quick Start: [QUICKSTART.md](QUICKSTART.md)
--  GitHub: https://github.com/Zequent/zequent-framework
+-  Documentation: [../README.md](../README.md)

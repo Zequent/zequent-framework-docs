@@ -218,4 +218,4 @@ The Python SDK is intentionally lean — there is no DI, no annotations, no code
 - [Quickstart](QUICKSTART_PYTHON.md) — first 10 minutes
 - [Configuration](CONFIGURATION_PYTHON.md) — every env var the SDK reads
 - [Customer example](CUSTOMER_EXAMPLE_PYTHON.md) — full FastAPI sample
-- SDK README — package-level reference (in the framework repo)
+- SDK README - package-level reference

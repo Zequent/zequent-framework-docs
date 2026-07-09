@@ -11,8 +11,8 @@ Add the Zequent Client SDK to your `pom.xml`:
 ```xml
 <dependency>
     <groupId>com.zqnt.sdk</groupId>
-    <artifactId>client-sdk</artifactId>
-    <version>1.0.0</version>
+    <artifactId>client-java-sdk</artifactId>
+    <version>1.2.4</version>
 </dependency>
 ```
 
@@ -34,14 +34,7 @@ LIVE_DATA_SERVICE_HOST=localhost
 LIVE_DATA_SERVICE_PORT=8003
 ```
 
-Or copy one of our templates:
-```bash
-# Development
-cp .env.dev.example .env
-
-# Production with Kubernetes
-cp .env.production.example .env
-```
+For Docker Compose or Kubernetes, use the service DNS names from your deployment instead of `localhost`.
 
 ## Step 3: Use the Client
 
@@ -227,7 +220,7 @@ REMOTE_CONTROL_SERVICE_PORT=8002
 ```
 
 ```bash
-mvn quarkus:dev
+docker run --env-file .env --network host your-registry/drone-app:latest
 ```
 
 ### Staging (Docker Compose)
@@ -239,7 +232,7 @@ REMOTE_CONTROL_SERVICE_PORT=8002
 ```
 
 ```bash
-docker-compose up
+docker compose up -d
 ```
 
 ### Production (Kubernetes)
@@ -362,7 +355,7 @@ cat .env
 
 For issues or questions:
 - Documentation: [CONFIGURATION.md](CONFIGURATION.md)
-- GitHub Issues: https://github.com/Zequent/zequent-framework/issues
+- Email: support@zequent.com
 - Email: support@zequent.com
 
 ## Summary

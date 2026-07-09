@@ -1,6 +1,6 @@
-# Zequent Framework Edge SDK
+# Zequent Edge SDK
 
-The Edge SDK provides the foundation for building Edge Adapters that connect physical assets (drones, docks, vehicles, and other remote devices) to the Zequent Framework ecosystem. By implementing the interfaces defined in this SDK, each vendor-specific edge adapter exposes a uniform set of commands and data streams that the platform and its Client SDK consumers can use without any knowledge of the underlying hardware.
+The Edge SDK is used to build custom edge adapters that connect physical assets such as drones, docks, vehicles, and other remote devices to Zequent. A custom adapter exposes a consistent command and telemetry interface to the platform and to Client SDK consumers.
 
 ## Tech Specs
 
@@ -11,7 +11,7 @@ The Edge SDK provides the foundation for building Edge Adapters that connect phy
 | Quarkus     | 3.x     |
 | gRPC        | via Quarkus gRPC extension |
 
-## Architecture Overview
+## Overview
 
 The Edge SDK sits between the physical device and the Zequent platform services. An edge adapter is a standalone Quarkus application that depends on the Edge SDK library and provides concrete implementations for the commands relevant to its hardware.
 
@@ -90,10 +90,10 @@ public class MyEdgeAdapter implements EdgeAdapterService {
 }
 ```
 
-Run the application:
+Build and run your adapter as a container image:
 
 ```bash
-./mvnw quarkus:dev
+docker run --env-file .env -p 9001:9001 your-registry/my-edge-adapter:latest
 ```
 
 For a complete walkthrough, see the [Quickstart Guide](edge-sdk-quickstart.md).

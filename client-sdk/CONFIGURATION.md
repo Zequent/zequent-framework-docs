@@ -1,372 +1,123 @@
-# Zequent Client SDK - Configuration Guide
+# Zequent Client SDK - Configuration
 
-## Overview
+This page describes the public configuration model for external developers and customer deployments.
 
-The Zequent Client SDK supports flexible configuration via **application.properties** or **environment variables**, allowing you to switch between environments (dev, staging, production) **without any code changes**.
+Zequent platform services are run from published container images. Customer applications use the Client SDKs and connect to the service endpoints exposed by the deployment.
 
-## Configuration Methods
+## Container Configuration
 
-### Priority Order (highest to lowest):
-1. **Environment Variables** (e.g., `REMOTE_CONTROL_SERVICE_HOST`)
-2. **System Properties** (e.g., `-Dzequent.remote-control-service.host=...`)
-3. **.env file** (automatically loaded by Quarkus)
-4. **application.properties** (defaults)
+The public customer Compose template is [docker-compose.customer.yml](../docker-compose.customer.yml). It references one deployment-local `.env` file.
 
-## Quick Start
-
-### 1. Choose Your Environment
-
-Copy the appropriate `.env` template:
-
-```bash
-# Development (local services)
-cp .env.dev.example .env
-
-# Staging (Docker Compose)
-cp .env.staging.example .env
-
-# Production (Kubernetes)
-cp .env.production.example .env
-```
-
-### 2. Run Your Application
-
-```bash
-mvn quarkus:dev
-```
-
-**That's it!** No code changes needed.
-
-## Configuration Reference
-
-### Service Configuration
-
-Each service (Remote Control, Mission Autonomy, Live Data) has the following settings:
-
-#### Remote Control Service
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `zequent.remote-control-service.host` | `REMOTE_CONTROL_SERVICE_HOST` | `localhost` | Service hostname |
-| `zequent.remote-control-service.port` | `REMOTE_CONTROL_SERVICE_PORT` | `8002` | Service port |
-| `zequent.remote-control-service.use-plaintext` | `REMOTE_CONTROL_SERVICE_USE_PLAINTEXT` | `true` | Use plaintext (no TLS) |
-| `zequent.remote-control-service.use-stork` | `REMOTE_CONTROL_SERVICE_USE_STORK` | `false` | Enable Stork service discovery |
-| `zequent.remote-control-service.stork-service-name` | `REMOTE_CONTROL_SERVICE_STORK_NAME` | `remote-control-service` | Stork service name |
-| `zequent.remote-control-service.load-balancer-type` | `REMOTE_CONTROL_SERVICE_LOAD_BALANCER` | `ROUND_ROBIN` | Load balancer: `ROUND_ROBIN`, `RANDOM`, `LEAST_REQUESTS` |
-
-#### Mission Autonomy Service
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `zequent.mission-autonomy-service.host` | `MISSION_AUTONOMY_SERVICE_HOST` | `localhost` | Service hostname |
-| `zequent.mission-autonomy-service.port` | `MISSION_AUTONOMY_SERVICE_PORT` | `8004` | Service port |
-| `zequent.mission-autonomy-service.use-plaintext` | `MISSION_AUTONOMY_SERVICE_USE_PLAINTEXT` | `true` | Use plaintext |
-| `zequent.mission-autonomy-service.use-stork` | `MISSION_AUTONOMY_SERVICE_USE_STORK` | `false` | Enable Stork |
-| `zequent.mission-autonomy-service.stork-service-name` | `MISSION_AUTONOMY_SERVICE_STORK_NAME` | `mission-autonomy-service` | Stork service name |
-| `zequent.mission-autonomy-service.load-balancer-type` | `MISSION_AUTONOMY_SERVICE_LOAD_BALANCER` | `ROUND_ROBIN` | Load balancer type |
-
-#### Live Data Service
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `zequent.live-data-service.host` | `LIVE_DATA_SERVICE_HOST` | `localhost` | Service hostname |
-| `zequent.live-data-service.port` | `LIVE_DATA_SERVICE_PORT` | `8003` | Service port |
-| `zequent.live-data-service.use-plaintext` | `LIVE_DATA_SERVICE_USE_PLAINTEXT` | `true` | Use plaintext |
-| `zequent.live-data-service.use-stork` | `LIVE_DATA_SERVICE_USE_STORK` | `false` | Enable Stork |
-| `zequent.live-data-service.stork-service-name` | `LIVE_DATA_SERVICE_STORK_NAME` | `live-data-service` | Stork service name |
-| `zequent.live-data-service.load-balancer-type` | `LIVE_DATA_SERVICE_LOAD_BALANCER` | `ROUND_ROBIN` | Load balancer type |
-
-#### Connector Service
-
-The Connector Service handles device connectivity and protocol translation. It is consumed internally by Mission Autonomy and Live Data services via gRPC (port 8010, HTTP and gRPC share the same port).
-
-**Connection (used by internal services connecting to connector-service):**
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `grpc.clients.connector-service.host` | `CONNECTOR_SERVICE_HOST` | `localhost` | Service hostname |
-| `grpc.clients.connector-service.port` | `CONNECTOR_SERVICE_PORT` | `8010` | gRPC port (shared with HTTP) |
-
-**Redis:**
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `quarkus.redis.hosts` | `REDIS_URL` | `redis://redis:6379` | Redis connection URL |
-
-**Database (required for `docker` and `k8s` profiles):**
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `quarkus.datasource.jdbc.url` | `DATABASE_URL` | `jdbc:postgresql://zequent_db:5432/zequent_db` | JDBC connection URL |
-| `quarkus.datasource.reactive.url` | `DATABASE_REACTIVE_URL` | `postgresql://zequent_db:5432/zequent_db` | Reactive (Vert.x) connection URL |
-| `quarkus.datasource.username` | `DATABASE_USER` | `postgres` | Database username |
-| `quarkus.datasource.password` | `DATABASE_PASSWORD` | `postgres` | Database password |
-
-**Monitoring (Micrometer / Prometheus):**
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `quarkus.micrometer.enabled` | `MICROMETER_ENABLED` | `false` | Enable Micrometer metrics |
-| `quarkus.micrometer.export.prometheus.enabled` | `PROMETHEUS_ENABLED` | `false` | Enable Prometheus endpoint |
-| `quarkus.micrometer.export.prometheus.path` | `PROMETHEUS_PATH` | `/q/metrics` | Prometheus scrape path |
-| `quarkus.micrometer.binder.jvm` | `MICROMETER_BINDER_JVM` | `false` | JVM metrics |
-| `quarkus.micrometer.binder.system` | `MICROMETER_BINDER_SYSTEM` | `false` | System metrics |
-| `quarkus.micrometer.binder.http-server.enabled` | `HTTP_SERVER_ENABLED` | `false` | HTTP server metrics |
-| `quarkus.micrometer.binder.grpc-server.enabled` | `GRPC_SERVER_ENABLED` | `false` | gRPC server metrics |
-| `quarkus.micrometer.binder.grpc-client.enabled` | `GRPC_CLIENT_ENABLED` | `false` | gRPC client metrics |
-
-**OpenTelemetry:**
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `quarkus.otel.traces.enabled` | `OTEL_TRACES_ENABLED` | `false` | Enable distributed tracing |
-| `quarkus.otel.metrics.enabled` | `OTEL_METRICS_ENABLED` | `false` | Enable OTEL metrics export |
-| `quarkus.otel.logs.enabled` | `OTEL_LOGS_ENABLED` | `false` | Enable OTEL log export |
-| `quarkus.otel.exporter.otlp.endpoint` | `OTEL_ENDPOINT` | `http://jaeger-all-in-one:4317` | OTLP collector endpoint |
-| `quarkus.otel.resource.attributes` | `OTEL_RESOURCE_ATTRIBUTES` | `service.name=connector-service` | OTEL resource attributes |
-
-### Global Resilience Settings
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `zequent.resilience.max-retry-attempts` | `ZEQUENT_MAX_RETRY_ATTEMPTS` | `3` | Maximum retry attempts |
-| `zequent.resilience.retry-delay-millis` | `ZEQUENT_RETRY_DELAY_MS` | `1000` | Delay between retries (ms) |
-| `zequent.resilience.circuit-breaker-failure-threshold` | `ZEQUENT_CIRCUIT_BREAKER_THRESHOLD` | `5` | Failures before circuit opens |
-| `zequent.resilience.circuit-breaker-wait-duration-millis` | `ZEQUENT_CIRCUIT_BREAKER_WAIT_MS` | `30000` | Wait before retry (ms) |
-| `zequent.resilience.connection-timeout-seconds` | `ZEQUENT_CONNECTION_TIMEOUT_SEC` | `30` | Connection timeout |
-| `zequent.resilience.request-timeout-seconds` | `ZEQUENT_REQUEST_TIMEOUT_SEC` | `60` | Request timeout |
-
-## Environment Examples
-
-### Development (.env.dev.example)
-
-```bash
-# Local development - all services on localhost
-REMOTE_CONTROL_SERVICE_HOST=localhost
-REMOTE_CONTROL_SERVICE_PORT=8002
-REMOTE_CONTROL_SERVICE_USE_PLAINTEXT=true
-REMOTE_CONTROL_SERVICE_USE_STORK=false
-```
-
-**Usage:**
-```bash
-cp .env.dev.example .env
-mvn quarkus:dev
-```
-
-### Staging - Docker Compose (.env.staging.example)
-
-```bash
-# Docker Compose - use service names
-REMOTE_CONTROL_SERVICE_HOST=remote-control-service
-REMOTE_CONTROL_SERVICE_PORT=8002
-REMOTE_CONTROL_SERVICE_USE_PLAINTEXT=true
-REMOTE_CONTROL_SERVICE_USE_STORK=false
-
-# Connector Service (internal - consumed by mission-autonomy and live-data)
-CONNECTOR_SERVICE_HOST=connector-service
-CONNECTOR_SERVICE_PORT=8010
-REDIS_URL=redis://redis:6379
-DATABASE_URL=jdbc:postgresql://zequent_db:5432/zequent_db
-DATABASE_REACTIVE_URL=postgresql://zequent_db:5432/zequent_db
-DATABASE_USER=postgres
-DATABASE_PASSWORD=postgres
-```
-
-**docker-compose.yml:**
 ```yaml
 services:
-  remote-control-service:
-    image: zequent/remote-control:latest
-    ports:
-      - "8002:8002"
-
-  my-app:
-    image: my-app:latest
-    env_file: .env
+  connector-service:
+    image: ghcr.io/zequent/connector-service:latest
+    env_file:
+      - .env
 ```
 
-**Usage:**
-```bash
-cp .env.staging.example .env
-docker-compose up
-```
+Use the same `env_file: .env` pattern for Zequent service images, Admin Console images, adapter images, and customer application containers.
 
-### Production - Kubernetes (.env.production.example)
+Do not commit `.env` files. Store credentials and deployment-specific values in your deployment environment or secret manager.
+
+Start the public template with:
 
 ```bash
-# Kubernetes with Stork service discovery
-REMOTE_CONTROL_SERVICE_USE_STORK=true
-REMOTE_CONTROL_SERVICE_STORK_NAME=remote-control-service
-REMOTE_CONTROL_SERVICE_USE_PLAINTEXT=false
-REMOTE_CONTROL_SERVICE_LOAD_BALANCER=LEAST_REQUESTS
+docker compose -f docs/docker-compose.customer.yml up -d
 ```
 
-**Kubernetes deployment.yaml:**
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-app
-spec:
-  template:
-    spec:
-      containers:
-      - name: my-app
-        image: my-app:latest
-        env:
-        - name: REMOTE_CONTROL_SERVICE_USE_STORK
-          value: "true"
-        - name: REMOTE_CONTROL_SERVICE_STORK_NAME
-          value: "remote-control-service"
-        - name: REMOTE_CONTROL_SERVICE_USE_PLAINTEXT
-          value: "false"
-        - name: ZEQUENT_MAX_RETRY_ATTEMPTS
-          value: "5"
-```
-
-## Code Usage
-
-### With CDI (Recommended)
-
-```java
-@ApplicationScoped
-public class MyService {
-
-    @Inject
-    ZequentClient client;  // Automatically configured from properties!
-
-    public void doSomething() {
-        var request = TakeoffRequest.builder()
-            .sn("YOUR_DEVICE_SN")
-            .latitude(47.3769f)
-            .longitude(8.5417f)
-            .altitude(100.0f)
-            .build();
-
-        var response = client.remoteControl().takeoff(request).join();
-    }
-}
-```
-
-### Standalone (Programmatic)
-
-You can still use the builder if needed:
-
-```java
-ZequentClient client = ZequentClient.builder()
-    .remoteControl()
-        .host("custom-host")
-        .port(8002)
-        .done()
-    .build();
-```
-
-## Load Balancer Types
-
-| Type | Description | Use Case |
-|------|-------------|----------|
-| `ROUND_ROBIN` | Distribute requests evenly across instances | General purpose (default) |
-| `RANDOM` | Random instance selection | Simple load distribution |
-| `LEAST_REQUESTS` | Route to instance with fewest active requests | Optimized for varying request durations |
-| `POWER_OF_TWO_CHOICES` | Pick best of 2 random instances | Balance between random and least-requests |
-
-## Stork Service Discovery
-
-### Kubernetes
+Optional adapter images are enabled through Compose profiles, for example:
 
 ```bash
-REMOTE_CONTROL_SERVICE_USE_STORK=true
-REMOTE_CONTROL_SERVICE_STORK_NAME=remote-control-service
+docker compose -f docs/docker-compose.customer.yml --profile edge-dji up -d
 ```
 
-Stork will automatically discover service endpoints via Kubernetes DNS.
+## Platform Service Images
 
-### Consul
+| Component | Image | Default port |
+| --- | --- | ---: |
+| Connector Service | `ghcr.io/zequent/connector-service:latest` | `8010` |
+| Remote Control Service | `ghcr.io/zequent/remote-control-service:latest` | `8002` |
+| Live Data Service | `ghcr.io/zequent/live-data-service:latest` | `8003` |
+| Mission Autonomy Service | `ghcr.io/zequent/mission-autonomy-service:latest` | `8004` |
+| Admin Console API | `ghcr.io/zequent/admin-console-service:latest` | `8005` |
+| Admin Console UI | `ghcr.io/zequent/zqnt-admin-console-dashboard:latest` | `3001` |
 
-Add to `application.properties`:
-```properties
-stork.remote-control-service.service-discovery.type=consul
-stork.remote-control-service.service-discovery.consul-host=consul.example.com
-stork.remote-control-service.service-discovery.consul-port=8500
-```
+Use versioned image tags for production deployments.
 
-## Tips
+## Adapter Images
 
-### 1. Environment Switching
-**Never change code!** Just switch `.env` files:
-```bash
-# Development
-cp .env.dev.example .env && mvn quarkus:dev
+| Adapter | Image | Status |
+| --- | --- | --- |
+| DJI | `ghcr.io/zequent/edge-dji:latest` | Available |
+| Betaflight | `ghcr.io/zequent/edge-betaflight:latest` | Available |
+| MAVLink | `ghcr.io/zequent/edge-mavlink:latest` | Available |
+| RNS | `ghcr.io/zequent/edge-rns:latest` | Available |
+| Sapient | `ghcr.io/zequent/edge-sapient:latest` | Available |
+| AI Adapter | `ghcr.io/zequent/ai-adapter:latest` | Under development |
 
-# Staging
-cp .env.staging.example .env && docker-compose up
+## Client SDK Service Endpoints
 
-# Production
-# Set environment variables in K8s and deploy
-```
+Customer applications need the platform service hostnames and ports.
 
-### 2. Override Individual Settings
-Mix defaults with overrides:
-```bash
-# Use .env defaults but override one service
-REMOTE_CONTROL_SERVICE_HOST=custom-host mvn quarkus:dev
-```
+When the customer application runs inside the same Compose or Kubernetes network, use the service names:
 
-### 3. Validate Configuration
-Check logs on startup:
-```
-Service 'remote-control' configured: host=localhost, port=8002, useStork=false
-Service 'mission-autonomy' configured: host=localhost, port=8004, useStork=false
-Service 'live-data' configured: host=localhost, port=8003, useStork=false
-Service 'connector' configured: host=localhost, port=8010
-```
+| Variable | Typical value |
+| --- | --- |
+| `REMOTE_CONTROL_SERVICE_HOST` | `remote-control-service` |
+| `REMOTE_CONTROL_SERVICE_PORT` | `8002` |
+| `LIVE_DATA_SERVICE_HOST` | `live-data-service` |
+| `LIVE_DATA_SERVICE_PORT` | `8003` |
+| `MISSION_AUTONOMY_SERVICE_HOST` | `mission-autonomy-service` |
+| `MISSION_AUTONOMY_SERVICE_PORT` | `8004` |
+| `CONNECTOR_SERVICE_HOST` | `connector-service` |
+| `CONNECTOR_SERVICE_PORT` | `8010` |
 
-## Troubleshooting
+When the customer application runs on the host and connects to exposed local ports, use `localhost` for the host values.
 
-### Problem: Services not connecting
+## Admin Console
 
-**Check 1:** Verify environment variables
-```bash
-echo $REMOTE_CONTROL_SERVICE_HOST
-echo $REMOTE_CONTROL_SERVICE_PORT
-```
+The Admin Console has two images:
 
-**Check 2:** Check application logs for configuration
-```
-Service 'remote-control' configured: host=..., port=...
-```
+| Component | Image | Default local URL |
+| --- | --- | --- |
+| Admin Console API | `ghcr.io/zequent/admin-console-service:latest` | `http://localhost:8005` |
+| Admin Console UI | `ghcr.io/zequent/zqnt-admin-console-dashboard:latest` | `http://localhost:3001` |
 
-**Check 3:** Test connectivity
-```bash
-telnet $REMOTE_CONTROL_SERVICE_HOST $REMOTE_CONTROL_SERVICE_PORT
-```
+The Admin Console UI needs public API and WebSocket URLs that are reachable from the user's browser.
 
-### Problem: Stork not discovering services
+| Variable | Purpose |
+| --- | --- |
+| `BACKEND_ORIGIN` | Backend origin used by the UI container inside the deployment network |
+| `NEXT_PUBLIC_BACKEND_AUTH_API_HOST` | Public Admin Console API URL |
+| `NEXT_PUBLIC_BACKEND_OPERATION_API_HOST` | Public operation API URL |
+| `NEXT_PUBLIC_BACKEND_SCHEDULER_API_HOST` | Public scheduler API URL |
+| `NEXT_PUBLIC_BACKEND_ASSET_API_HOST` | Public asset API URL |
+| `NEXT_PUBLIC_BACKEND_ORGANIZATION_API_HOST` | Public organization API URL |
+| `NEXT_PUBLIC_BACKEND_ASSET_WS_HOST` | Public asset WebSocket URL |
+| `NEXT_PUBLIC_BACKEND_DRC_WS_HOST` | Public direct remote control WebSocket URL |
+| `NEXT_PUBLIC_BACKEND_NOTIFICATION_WS_HOST` | Public notification WebSocket URL |
 
-**Check 1:** Verify Stork is enabled
-```bash
-echo $REMOTE_CONTROL_SERVICE_USE_STORK
-# Should be: true
-```
+For a local Compose deployment, these URLs normally point to `localhost:8005`.
 
-**Check 2:** Check Kubernetes service exists
-```bash
-kubectl get service remote-control-service
-```
+## Edge Adapter Configuration
 
-**Check 3:** Check Stork logs
-```
-Stork discovering service: remote-control-service
-```
+Ready-made adapter images and custom Edge SDK adapters need a reachable adapter endpoint plus any device-specific credentials.
 
-## Summary
+| Variable | Purpose |
+| --- | --- |
+| `EDGE_ADAPTER_TARGET_ENDPOINTS` | Host and port where the platform can reach the adapter |
+| Device/broker credentials | Credentials required by the selected adapter integration |
+| Storage credentials | Optional credentials when the adapter uploads or downloads mission files/media |
 
- **No code changes** for environment switching
- **Properties or environment variables** - your choice
- **Multi-service** - each service independently configured
- **Stork support** - automatic service discovery
- **Load balancing** - per-service configuration
- **Resilience** - built-in retry, circuit breaker, timeouts
+The exact device-specific values depend on the selected adapter image.
 
-Just copy the right `.env` file and run! 
+## Deployment Notes
+
+- Keep one `.env` per deployment environment.
+- Do not publish `.env` files in public documentation or source repositories.
+- Keep secrets in your orchestrator's secret mechanism for production.
+- Use service names for container-to-container communication.
+- Use public hostnames or exposed local ports for browser-facing URLs.
+- Use the Client SDK for customer applications.
+- Use the Edge SDK when you need to build a custom adapter.
