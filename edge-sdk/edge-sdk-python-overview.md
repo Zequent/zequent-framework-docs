@@ -1,6 +1,6 @@
-# Zequent Framework Edge SDK (Python)
+# Zequent Edge SDK (Python)
 
-The Edge SDK provides the foundation for building Edge Adapters that connect physical assets (drones, docks, vehicles, and other remote devices) to the Zequent Framework ecosystem. By implementing the interfaces defined in this SDK, each vendor-specific edge adapter exposes a uniform set of commands and data streams that the platform and its Client SDK consumers can use without any knowledge of the underlying hardware.
+The Edge SDK is used to build custom edge adapters that connect physical assets such as drones, docks, vehicles, and other remote devices to Zequent. A custom adapter exposes a consistent command and telemetry interface to the platform and to Client SDK consumers.
 
 This is the **Python** edition of the Edge SDK. For Java, see [edge-sdk-overview.md](edge-sdk-overview.md).
 
@@ -13,14 +13,14 @@ This is the **Python** edition of the Edge SDK. For Java, see [edge-sdk-overview
 | gRPC runtime  | `grpcio` / `grpcio-tools`     |
 | Async runtime | `asyncio` (`grpc.aio`)        |
 
-## Architecture Overview
+## Overview
 
 The Edge SDK sits between the physical device and the Zequent platform services. An edge adapter is a standalone Python application that depends on the `edge-python-sdk` package and provides concrete implementations for the commands relevant to its hardware.
 
 ```
 +-------------------+     gRPC     +------------------------+
 | Zequent Platform  | <----------> |  Your Edge Adapter     |
-| (Java services)   |              |  (Python application)  |
+| (container images)|              |  (Python application)  |
 +-------------------+              |  - EdgeAdapter subclass|
                                    |  - EdgeServer          |
                                    |  - TelemetryPublisher  |
@@ -47,10 +47,6 @@ Manages a persistent gRPC connection to the Live Data service. Lets you push ass
 ### `ConnectorClient`
 
 Talks to the platform's Connector Service over gRPC for asset registration / lookup and other CRUD operations.
-
-### `RegistrationConfig`
-
-Optional config for Redis-backed registration so the platform can discover your adapter dynamically.
 
 ## Available Documentation
 

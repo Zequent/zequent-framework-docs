@@ -209,10 +209,10 @@ async def telemetry_stream(sn: str, client: ZequentClient = Depends(get_client))
 
 ## Step 4: Run platform services
 
-You need the Zequent backend services running. The simplest path is via Docker / Podman compose — see the framework [README](../README.md) for the compose file.
+You need the Zequent platform services running from the published container images. See [Zequent Documentation](../README.md) for the compose file.
 
 ```bash
-docker compose up -d
+docker compose -f docs/docker-compose.customer.yml up -d
 ```
 
 ---

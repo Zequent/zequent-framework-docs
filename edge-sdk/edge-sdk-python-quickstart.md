@@ -174,7 +174,7 @@ INFO  edge_sdk.server.edge_server  EdgeServer listening on 0.0.0.0:9001
 
 ## Step 7: Verify against the platform
 
-With the platform services running (see the framework [README](../README.md)):
+With the platform services running from the published container images (see [Zequent Documentation](../README.md)):
 
 1. The platform discovers your adapter via the configured endpoint.
 2. Sending a takeoff command from a Client SDK (Java or Python) lands on your `take_off` method.

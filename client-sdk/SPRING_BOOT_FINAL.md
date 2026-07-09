@@ -13,8 +13,8 @@ Uses `ZequentClientProducer` internally for consistent bean creation.
 ```xml
 <dependency>
     <groupId>com.zqnt.sdk</groupId>
-    <artifactId>client-sdk</artifactId>
-    <version>1.0.0</version>
+    <artifactId>client-java-sdk</artifactId>
+    <version>1.2.4</version>
 </dependency>
 ```
 

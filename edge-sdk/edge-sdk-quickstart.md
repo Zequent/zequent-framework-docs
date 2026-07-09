@@ -1,6 +1,6 @@
 # Edge SDK -- Quickstart Guide
 
-This guide walks you through creating a new edge adapter project from scratch using the Zequent Edge SDK. By the end, you will have a running Quarkus application that receives commands from the platform and can push telemetry data.
+This guide walks you through creating a new edge adapter project from scratch using the Zequent Edge SDK. By the end, you will have an adapter application that can be packaged as a container image, receive commands from the platform, and push telemetry data.
 
 ## Prerequisites
 
@@ -207,63 +207,20 @@ public class TelemetryProducer {
 
 ## Step 6: Start Platform Services
 
-Before running your adapter, start the required platform services. Use the provided Docker Compose file from the framework root or create a minimal one:
-
-```yaml
-# docker-compose.local.yml
-version: "3.8"
-
-services:
-  zequent_db:
-    image: docker.io/library/postgres:latest
-    environment:
-      POSTGRES_DB: zequent_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5433:5432"
-
-  redis:
-    image: docker.io/library/redis:latest
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
-
-  connector-service:
-    depends_on:
-      - zequent_db
-      - redis
-    image: ghcr.io/zequent/connector-service:latest
-    ports:
-      - "8080:8080"
-    environment:
-      - QUARKUS_REDIS_HOSTS=redis://redis:6379
-      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://zequent_db:5432/zequent_db
-      - QUARKUS_DATASOURCE_USERNAME=postgres
-      - QUARKUS_DATASOURCE_PASSWORD=postgres
-
-  live-data-service:
-    depends_on:
-      - redis
-    image: ghcr.io/zequent/live-data-service:latest
-    ports:
-      - "8003:8003"
-    environment:
-      - QUARKUS_REDIS_HOSTS=redis://redis:6379
-```
-
-Start the services:
+Before running your adapter, start the required platform services from the published container images:
 
 ```bash
-docker-compose up -d
+docker compose -f docs/docker-compose.customer.yml up -d
 ```
+
+The compose file uses one deployment-local `.env` file through `env_file`.
 
 ---
 
 ## Step 7: Run Your Adapter
 
 ```bash
-./mvnw quarkus:dev
+docker run --env-file .env -p 9001:9001 your-registry/my-edge-adapter:latest
 ```
 
 You should see output similar to:
@@ -277,9 +234,9 @@ Your adapter is now running and ready to receive commands from the platform via 
 
 ---
 
-## Step 8: Test with the Simulator
+## Step 8: Test with grpcurl
 
-You can use the framework's built-in simulator (`simulator/`) to send test commands to your adapter. Alternatively, test with `grpcurl`:
+You can test your adapter endpoint with `grpcurl`:
 
 ```bash
 # Install grpcurl if needed
@@ -334,4 +291,4 @@ my-edge-adapter/
 - [Connector](edge-sdk-connector.md) -- Asset and mission management
 - [Models Reference](edge-sdk-models.md) -- Complete model documentation
 
-For a real-world implementation example, see the `edge-adapters/edge-dji` module in the framework repository.
+For a ready-made DJI deployment, see [DJI Adapter Deployment](edge-sdk-dji-adapter-deployment.md).

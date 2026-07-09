@@ -217,37 +217,12 @@ If your adapter needs to upload files (e.g., KMZ flight plans) to object storage
 
 ---
 
-## Monitoring and Observability
-
-All monitoring properties are disabled by default and should be enabled via environment variables.
-
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `quarkus.micrometer.enabled` | `MICROMETER_ENABLED` | `false` | Enable Micrometer metrics |
-| `quarkus.micrometer.export.prometheus.enabled` | `PROMETHEUS_ENABLED` | `false` | Enable Prometheus exporter |
-| `quarkus.micrometer.export.prometheus.path` | `PROMETHEUS_PATH` | `/q/metrics` | Metrics endpoint path |
-| `quarkus.micrometer.binder.jvm` | `MICROMETER_BINDER_JVM` | `false` | Enable JVM metrics |
-| `quarkus.micrometer.binder.system` | `MICROMETER_BINDER_SYSTEM` | `false` | Enable system metrics |
-| `quarkus.micrometer.binder.http-server.enabled` | `MICROMETER_BINDER_HTTP_SERVER_ENABLED` | `false` | Enable HTTP server metrics |
-| `quarkus.micrometer.binder.grpc-server.enabled` | `MICROMETER_BINDER_GRPC_SERVER_ENABLED` | `false` | Enable gRPC server metrics |
-| `quarkus.micrometer.binder.grpc-client.enabled` | `MICROMETER_BINDER_GRPC_CLIENT_ENABLED` | `false` | Enable gRPC client metrics |
-| `quarkus.otel.traces.enabled` | `OTEL_TRACES_ENABLED` | `false` | Enable OpenTelemetry tracing |
-| `quarkus.otel.metrics.enabled` | `OTEL_METRICS_ENABLED` | `false` | Enable OpenTelemetry metrics |
-| `quarkus.otel.logs.enabled` | `OTEL_LOGS_ENABLED` | `false` | Enable OpenTelemetry log export |
-| `quarkus.otel.exporter.otlp.endpoint` | `OTEL_ENDPOINT` | `http://jaeger-all-in-one:4317` | OTLP collector endpoint |
-| `quarkus.otel.resource.attributes` | `OTEL_RESOURCE_ATTRIBUTES` | `service.name=edge-adapter-dji` | OTel resource attributes |
-
----
-
 ## Environment-Specific Examples
 
 ### Local Development
 
 ```properties
 zequent.edge.sn=YOUR_DEVICE_SN
-
-quarkus.redis.hosts=redis://localhost:6379
-
 zequent.mqtt.broker.host=your-broker.example.com
 ```
 
@@ -255,30 +230,19 @@ The gRPC client endpoints default to `localhost` on their respective ports in de
 
 ### Docker Compose
 
-The `docker` profile uses Stork for service discovery. Set host/port via the short env var names:
+Use the deployment-local `.env` file for adapter configuration:
 
 ```yaml
 services:
   edge-adapter:
     image: ghcr.io/zequent/edge-dji:latest
+    env_file:
+      - .env
     ports:
       - "9001:9001"
-    environment:
-      - EDGE_ADAPTER_TARGET_ENDPOINTS=edge-adapter:9001
-      - ZEQUENT_EDGE_SN=YOUR_DEVICE_SN
-      - CONNECTOR_SERVICE_HOST=connector-service
-      - CONNECTOR_SERVICE_PORT=8010
-      - LIVE_DATA_SERVICE_HOST=live-data-service
-      - LIVE_DATA_SERVICE_PORT=8003
-      - MISSION_AUTONOMY_SERVICE_HOST=mission-autonomy-service
-      - MISSION_AUTONOMY_SERVICE_PORT=8004
-      - QUARKUS_REDIS_HOSTS=redis://redis:6379
-      - MQTT_BROKER_HOST=your-broker.example.com
-      - MQTT_USERNAME=backend
-      - MQTT_PASSWORD=secret
-      - MQTT_DOCK_USERNAME=dock
-      - MQTT_DOCK_PASSWORD=secret
 ```
+
+Set `EDGE_ADAPTER_TARGET_ENDPOINTS`, service host/port values, device identity, and device-specific broker credentials in `.env`.
 
 ### Kubernetes
 
@@ -307,8 +271,6 @@ spec:
           value: "live-data-service"
         - name: QUARKUS_GRPC_CLIENTS_CONNECTOR_SERVICE_HOST
           value: "connector-service"
-        - name: QUARKUS_REDIS_HOSTS
-          value: "redis://redis:6379"
 ```
 
 ---
@@ -371,4 +333,4 @@ echo $ZEQUENT_MQTT_BROKER_HOST
 
 **Check 2:** Quarkus caches configuration at startup. Restart the application after changing properties.
 
-**Check 3:** Use Quarkus dev mode (`./mvnw quarkus:dev`) for live reload during development.
+**Check 3:** Restart the adapter container after changing container environment variables.

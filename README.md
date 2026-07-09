@@ -1,794 +1,107 @@
-# Zequent Framework Guide
+# Zequent Documentation
 
-This guide helps you set up and use the Zequent Framework with your applications.
+Last updated: 2026-07-08
 
-The framework ships **two language editions** of each SDK. Pick the one that
-matches your stack:
+Zequent provides SDKs, platform service images, and ready-to-run edge adapter images for connecting, monitoring, and controlling remote assets such as drones, docks, vehicles, and other edge devices.
 
-| SDK              | Java                                                     | Python                                                                |
-|------------------|----------------------------------------------------------|-----------------------------------------------------------------------|
-| Edge SDK         | [edge-sdk-overview.md](edge-sdk/edge-sdk-overview.md)    | [edge-sdk-python-overview.md](edge-sdk/edge-sdk-python-overview.md)   |
-| Client SDK       | [QUICKSTART.md](client-sdk/QUICKSTART.md)                | [QUICKSTART_PYTHON.md](client-sdk/QUICKSTART_PYTHON.md)               |
+This public documentation is for external developers and integration teams. It focuses on:
 
-The Python SDKs target Python 3.12+, use `uv` for dependency management, and
-expose the same gRPC contract as the Java SDKs — your platform services don't
-care which language an adapter or client is written in.
+- using the Client SDKs from customer applications
+- building custom edge adapters with the Edge SDKs
+- running Zequent platform services from published container images
+- deploying supported edge adapter images
 
-## Prerequisites
+## Start Here
 
-### Java track
+| Goal | Documentation |
+| --- | --- |
+| Use Zequent from a Java application | [Java Client SDK Quickstart](client-sdk/QUICKSTART.md) |
+| Use Zequent from a Python application | [Python Client SDK Quickstart](client-sdk/QUICKSTART_PYTHON.md) |
+| Configure a customer application | [Client SDK Configuration](client-sdk/CONFIGURATION.md) |
+| Build a custom Java edge adapter | [Java Edge SDK Quickstart](edge-sdk/edge-sdk-quickstart.md) |
+| Build a custom Python edge adapter | [Python Edge SDK Quickstart](edge-sdk/edge-sdk-python-quickstart.md) |
+| Configure an edge adapter | [Edge SDK Configuration](edge-sdk/edge-sdk-configuration.md) |
+| Deploy the DJI adapter | [DJI Adapter Deployment](edge-sdk/edge-sdk-dji-adapter-deployment.md) |
 
-- Java 17 or higher
-- Maven 3.6.X or higher
-- Docker, Podman or Kubernetes*
-- GitHub Account to acces public Packages and Container Images
+## Customer Applications
 
-### Python track
+Customer applications normally use the Client SDK and connect to the platform service endpoints exposed by your deployment.
 
-- Python 3.12 or higher
-- [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`
-- Docker, Podman or Kubernetes*
-- GitHub Account to access private packages (when applicable)
+| SDK | Main docs |
+| --- | --- |
+| Java Client SDK | [Quickstart](client-sdk/QUICKSTART.md), [Configuration](client-sdk/CONFIGURATION.md), [Customer Example](client-sdk/CUSTOMER_EXAMPLE.md) |
+| Python Client SDK | [Quickstart](client-sdk/QUICKSTART_PYTHON.md), [Configuration](client-sdk/CONFIGURATION_PYTHON.md), [Customer Example](client-sdk/CUSTOMER_EXAMPLE_PYTHON.md) |
 
-## Setup
+## Platform Service Images
 
-### 1. Configure Maven
+Zequent platform services are run from published container images. Use versioned tags for production deployments.
 
-First, configure Maven to access GitHub Packages. Add the following to your `~/.m2/settings.xml` file. This allows Maven to download the necessary Zequent Framework dependencies.
+| Component | Image | Default port | Customer-facing purpose |
+| --- | --- | ---: | --- |
+| Connector Service | `ghcr.io/zequent/connector-service:latest` | `8010` | Asset, mission, task, scheduler, organization, notification, and telemetry APIs |
+| Remote Control Service | `ghcr.io/zequent/remote-control-service:latest` | `8002` | Direct asset commands such as takeoff, go-to, return-to-home, dock, camera, and manual-control commands |
+| Live Data Service | `ghcr.io/zequent/live-data-service:latest` | `8003` | Live telemetry, task progress, and live-stream state |
+| Mission Autonomy Service | `ghcr.io/zequent/mission-autonomy-service:latest` | `8004` | Mission and task scheduling/autonomy workflows |
+| Admin Console API | `ghcr.io/zequent/admin-console-service:latest` | `8005` | HTTP/WebSocket API for the Admin Console |
+| Admin Console UI | `ghcr.io/zequent/zqnt-admin-console-dashboard:latest` | `3001` | Browser UI for monitoring and operations |
 
-```xml
-<settings>
-  <servers>
-    <server>
-      <id>github</id>
-      <username>YOUR_GITHUB_USERNAME</username>
-      <password>YOUR_GITHUB_TOKEN</password>
-    </server>
-  </servers>
-</settings>
-```
+## Edge Adapter Images
 
-> **Note:** Replace `YOUR_GITHUB_USERNAME` with your GitHub username and `YOUR_GITHUB_TOKEN` with a personal access token that has `read:packages` scope.
+Use these adapter images when you want a ready-made integration. Use the Edge SDK when you need to build a custom adapter.
 
-### 2. Set Up Your Project
+| Adapter | Image | Status | Notes |
+| --- | --- | --- | --- |
+| DJI | `ghcr.io/zequent/edge-dji:latest` | Available | DJI dock/drone integration |
+| Betaflight | `ghcr.io/zequent/edge-betaflight:latest` | Available | Betaflight-compatible devices |
+| MAVLink | `ghcr.io/zequent/edge-mavlink:latest` | Available | MAVLink-compatible vehicles |
+| RNS | `ghcr.io/zequent/edge-rns:latest` | Available | RNS integration |
+| Sapient | `ghcr.io/zequent/edge-sapient:latest` | Available | Sapient-compatible integration |
+| AI Adapter | `ghcr.io/zequent/ai-adapter:latest` | Under development | Early-stage adapter; public functionality is not finalized yet |
 
-Next, set up a new Maven project or edit existing Maven projects to add the Zequent Framework dependency..
+## Deployment Configuration
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>com.example</groupId>
-    <artifactId>my-zequent-app</artifactId>
-    <version>1.0-SNAPSHOT</version>
-
-    <properties>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
-    <dependencies>
-        <dependency>
-            <groupId>com.zqnt.sdk</groupId>
-            <artifactId>client-sdk</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-    </dependencies>
-
-    <repositories>
-        <repository>
-            <id>github</id>
-            <url>https://maven.pkg.github.com/Zequent/zqnt-client-sdk-java</url>
-        </repository>
-    </repositories>
-</project>
-```
-
-### 3. Run Services
-
-The Zequent Framework relies on several services. You can run them easily using Docker or Podman.
-
-**1. Create `docker-compose.yml`**
-
-Create a `docker-compose.yml` file in your project's root directory:
+Container deployments use one deployment-local `.env` file referenced by [docker-compose.customer.yml](docker-compose.customer.yml).
 
 ```yaml
-version: "3.8"
 services:
-  # ==================== INFRASTRUCTURE ====================
-  zequent_db:
-    image: docker.io/timescale/timescaledb:latest-pg16
-    environment:
-      POSTGRES_DB: zequent_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5434:5432"
-    volumes:
-      - zequent_data:/var/lib/timescaledb/data
-    command: postgres -c shared_preload_libraries=timescaledb
-
-
-  redis:
-    image: docker.io/library/redis:latest
-    container_name: redis
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-
-
-  # ==================== OBSERVABILITY (Optional) ====================
-  jaeger-all-in-one:
-    image: docker.io/jaegertracing/all-in-one:latest
-    container_name: jaeger-all-in-one
-    ports:
-      - "16686:16686" # Jaeger UI
-      - "14268:14268" # Receive legacy OpenTracing traces, optional
-      - "4318:4318"   # OTLP HTTP receiver
-      - "4317:4317"   # OTLP gRPC
-      - "14250:14250" # Receive from external otel-collector, optional
-      - "14269:14269" # Metrics Reciever
-    environment:
-      - JAEGER_UI_CONFIG={"theme":"light"}
-      - COLLECTOR_OTLP_ENABLED=true
-
-
-  prometheus:
-    image: docker.io/prom/prometheus:latest
-    container_name: zqnt-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./services/admin-console/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
-
-
-  grafana:
-    image: docker.io/grafana/grafana:latest
-    container_name: zqnt-grafana
-    depends_on:
-      - prometheus
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_PATHS_CONFIG=/etc/grafana/grafana.ini
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=zequent2024
-      - GF_SECURITY_ALLOW_EMBEDDING=true
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
-    volumes:
-      - ./services/admin-console/monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
-      - ./services/admin-console/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./services/admin-console/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - grafana_data:/var/lib/grafana
-
-  # ==================== CORE SERVICES ====================
   connector-service:
     image: ghcr.io/zequent/connector-service:latest
-    pull_policy: always
-    container_name: connector-service
-    depends_on:
-      - zequent_db
-      - redis
-    ports:
-      - "${CONNECTOR_PORT:-8010}:8010"
-    environment:
-      # Profile
-      - QUARKUS_PROFILE=docker
-      # Redis
-      - REDIS_URL=redis://redis:6379
-      # Database
-      - DATABASE_URL=jdbc:postgresql://zequent_db:5432/zequent_db
-      - DATABASE_REACTIVE_URL=postgresql://zequent_db:5432/zequent_db
-      - DATABASE_USER=postgres
-      - DATABASE_PASSWORD=postgres
-
-      # OpenTelemetry (disabled by default — enable when Jaeger is running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-
-
-  live-data-service:
-    image: ghcr.io/zequent/live-data-service:latest
-    pull_policy: always
-    container_name: live-data-service
-    depends_on:
-      - redis
-      - connector-service
-    ports:
-      - "8003:8003"
-    environment:
-      # Profile
-      - QUARKUS_PROFILE=docker
-
-      # Redis
-      - REDIS_URL=redis://redis:6379
-
-      # gRPC Clients (uses Stork with static discovery)
-      - CONNECTOR_SERVICE_HOST=connector-service
-      - CONNECTOR_SERVICE_PORT=8010
-
-      # OpenTelemetry (disabled by default — enable when Jaeger is running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-
-  remote-control-service:
-    image: ghcr.io/zequent/remote-control-service:latest
-    pull_policy: always
-    container_name: remote-control-service
-    depends_on:
-      - redis
-      - live-data-service
-      - connector-service
-    ports:
-      - "8002:8002"
-    environment:
-      # Profile
-      - QUARKUS_PROFILE=docker
-
-      # Redis
-      - QUARKUS_REDIS_HOSTS=redis://redis:6379
-
-      # gRPC Clients (uses Stork with environment variables from properties)
-      - LIVE_DATA_SERVICE_HOST=live-data-service
-      - LIVE_DATA_SERVICE_PORT=8003
-      - CONNECTOR_SERVICE_HOST=connector-service
-      - CONNECTOR_SERVICE_PORT=8010
-
-      # OpenTelemetry (disabled by default — enable when Jaeger is running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-
-
-  mission-autonomy-service:
-    image: ghcr.io/zequent/mission-autonomy-service:latest
-    pull_policy: always
-    container_name: mission-autonomy-service
-    depends_on:
-      - redis
-      - connector-service
-    ports:
-      - "8004:8004"
-    environment:
-      # Profile
-      - QUARKUS_PROFILE=docker
-      # Redis
-      - REDIS_URL=redis://redis:6379
-      # gRPC Clients (uses Stork with static discovery)
-      - CONNECTOR_SERVICE_HOST=connector-service
-      - CONNECTOR_SERVICE_PORT=8010
-      # OpenTelemetry (disabled by default — enable when Jaeger is running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-
-
-  # ==================== EDGE SERVICES ====================
-  edge-adapter-dji:
-    image: ghcr.io/zequent/zqnt-edge-adapter-dji:latest
-    pull_policy: always
-    container_name: edge-adapter-dji
-    depends_on:
-      - redis
-      - live-data-service
-      - connector-service
-      - mission-autonomy-service
-    ports:
-      - "9001:9001"
-    environment:
-      # Profile
-      - QUARKUS_PROFILE=docker
-
-      - EDGE_ADAPTER_TARGET_ENDPOINTS=edge-adapter-dji:9001
-      # Redis
-      - QUARKUS_REDIS_HOSTS=redis://redis:6379
-
-      # MQTT Broker (required — set to your broker values)
-      - ZQNT_MQTT_BROKER_HOST=your-broker.example.com
-      - ZQNT_MQTT_BROKER_PORT=8883
-      - ZQNT_MQTT_USERNAME=<mqtt-backend-username>
-      - ZQNT_MQTT_PASSWORD=<mqtt-backend-password>
-      - ZQNT_MQTT_DOCK_USERNAME=<mqtt-dock-username>
-      - ZQNT_MQTT_DOCK_PASSWORD=<mqtt-dock-password>
-
-      # gRPC Clients
-      - CONNECTOR_SERVICE_HOST=connector-service
-      - CONNECTOR_SERVICE_PORT=8010
-      - LIVE_DATA_SERVICE_HOST=live-data-service
-      - LIVE_DATA_SERVICE_PORT=8003
-      - MISSION_AUTONOMY_SERVICE_HOST=mission-autonomy-service
-      - MISSION_AUTONOMY_SERVICE_PORT=8004
-
-      # OpenTelemetry (disabled by default — enable when Jaeger is running)
-      - OTEL_TRACES_ENABLED=false
-      - OTEL_METRICS_ENABLED=false
-      - OTEL_LOGS_ENABLED=false
-      - MICROMETER_ENABLED=false
-      - PROMETHEUS_ENABLED=false
-    restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-
-
-volumes:
-  zequent_data:
-  redis_data:
-  prometheus_data:
-  grafana_data:
-
+    env_file:
+      - .env
 ```
 
-**2. Start the Services**
+Do not commit `.env` files. Keep credentials, broker settings, stream URLs, and deployment-specific hostnames in your deployment environment or secret manager.
 
-Open a terminal in the same directory as your `docker-compose.yml` and run:
+See [Client SDK Configuration](client-sdk/CONFIGURATION.md) for the public configuration model.
 
-```bash
-# For Docker
-docker-compose up -d
+## Admin Console
 
-# For Podman
-podman-compose up -d
-```
+The Admin Console is split into an API image and a UI image.
 
+| Component | Default local URL |
+| --- | --- |
+| Admin Console UI | `http://localhost:3001` |
+| Admin Console API | `http://localhost:8005` |
 
-# Environment Configuration Guide
+The Admin Console provides browser workflows for asset monitoring, telemetry, missions/tasks, remote control, live streams, adapter management, and service health.
 
-This guide provides a complete overview of all configurable environment variables for the Zequent Framework. Use this reference to customize your deployment for development, Docker Compose, or Kubernetes environments.
+## SDK Requirements
 
-## Quick Start
+| SDK | Requirements |
+| --- | --- |
+| Java Client SDK / Java Edge SDK | Java 25, Maven 3.9+ recommended, Quarkus 3.x for Quarkus applications |
+| Python Client SDK / Python Edge SDK | Python 3.12+, `uv` recommended, `grpc.aio` |
 
-1. Copy the example file:
-   ```bash
-   cp .env.example .env
-   ```
+## Package Access
 
-2. Edit `.env` with your deployment-specific values
+If you consume private Zequent packages, configure access to the relevant package registry before building your customer application or adapter.
 
-3. Start the services:
-   ```bash
-   # Docker
-   docker-compose -f docker-compose.local.yml up -d
+For Maven packages, configure your `~/.m2/settings.xml` with a token that has package read access.
 
-   # Podman
-   podman-compose -f docker-compose.local.yml up -d
-   ```
+## Production Notes
 
----
-
-## Deployment Profile
-
-| Variable | Description | Values | Default |
-|----------|-------------|--------|---------|
-| `QUARKUS_PROFILE` | Active runtime profile | `dev`, `docker`, `k8s` | `docker` |
-
-**Profile Overview:**
-- **`dev`**: Local development with localhost connections
-- **`docker`**: Docker Compose with service discovery
-- **`k8s`**: Kubernetes with native service discovery
-
----
-
-## Infrastructure
-
-### Redis Configuration
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `REDIS_URL` | Redis connection URL | `redis://redis:6379` |
-
-**Environment-specific examples:**
-```bash
-# Docker Compose
-REDIS_URL=redis://redis:6379
-
-# Kubernetes
-REDIS_URL=redis://redis.zequent-prod.svc.cluster.local:6379
-
-# Local Development
-REDIS_URL=redis://localhost:6379
-```
-
-### Database Configuration
-
-> **Note:** Database configuration applies only to the **Connector Service**. Other services do not require database access.
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | JDBC connection URL | `jdbc:postgresql://zequent_db:5432/zequent_db` |
-| `DATABASE_REACTIVE_URL` | Reactive SQL client URL | `postgresql://zequent_db:5432/zequent_db` |
-| `DATABASE_USER` | Database username | `postgres` |
-| `DATABASE_PASSWORD` | Database password | `postgres` |
-
-**Production example:**
-```bash
-DATABASE_URL=jdbc:postgresql://timescaledb.production:5432/zequent_production
-DATABASE_REACTIVE_URL=postgresql://timescaledb.production:5432/zequent_production
-DATABASE_USER=zequent_app
-DATABASE_PASSWORD=<secure-password>
-```
-
----
-
-## Service Discovery (gRPC)
-
-Configure hostnames and ports for inter-service communication. Supports custom container/service names for multi-tenant or namespace-specific deployments.
-
-| Service | Host Variable | Port Variable | Default Host | Port | Description |
-|---------|--------------|---------------|--------------|------|-------------|
-| **Connector** | `CONNECTOR_SERVICE_HOST` | `CONNECTOR_SERVICE_PORT` | `connector-service` | `8010` | Core asset & vendor management |
-| **Live Data** | `LIVE_DATA_SERVICE_HOST` | `LIVE_DATA_SERVICE_PORT` | `live-data-service` | `8003` | Real-time telemetry streaming |
-| **Remote Control** | `REMOTE_CONTROL_SERVICE_HOST` | `REMOTE_CONTROL_SERVICE_PORT` | `remote-control-service` | `8002` | Asset command execution |
-| **Mission Autonomy** | `MISSION_AUTONOMY_SERVICE_HOST` | `MISSION_AUTONOMY_SERVICE_PORT` | `mission-autonomy-service` | `8004` | Mission planning & execution |
-
-**Standard configuration:**
-```bash
-CONNECTOR_SERVICE_HOST=connector-service
-CONNECTOR_SERVICE_PORT=8010
-LIVE_DATA_SERVICE_HOST=live-data-service
-LIVE_DATA_SERVICE_PORT=8003
-REMOTE_CONTROL_SERVICE_HOST=remote-control-service
-REMOTE_CONTROL_SERVICE_PORT=8002
-MISSION_AUTONOMY_SERVICE_HOST=mission-autonomy-service
-MISSION_AUTONOMY_SERVICE_PORT=8004
-```
-
-**Custom naming example:**
-```bash
-# Multi-tenant deployment
-CONNECTOR_SERVICE_HOST=acme-connector
-LIVE_DATA_SERVICE_HOST=acme-livedata
-REMOTE_CONTROL_SERVICE_HOST=acme-remotecontrol
-MISSION_AUTONOMY_SERVICE_HOST=acme-missions
-```
-
-**Kubernetes with namespace:**
-```bash
-# Full qualified domain names
-CONNECTOR_SERVICE_HOST=connector-service.zequent-prod.svc.cluster.local
-LIVE_DATA_SERVICE_HOST=live-data-service.zequent-prod.svc.cluster.local
-REMOTE_CONTROL_SERVICE_HOST=remote-control-service.zequent-prod.svc.cluster.local
-MISSION_AUTONOMY_SERVICE_HOST=mission-autonomy-service.zequent-prod.svc.cluster.local
-```
-
----
-
-## gRPC Client-Side Load Balancing
-
-Enables automatic load balancing across scaled service instances using DNS-based service discovery.
-
-| Variable | Description | Values | Default |
-|----------|-------------|--------|---------|
-| `GRPC_LOAD_BALANCING_POLICY` | Load balancing algorithm | `round_robin`, `pick_first` | `round_robin` |
-| `GRPC_ENABLE_DNS_RESOLVER` | Enable DNS-based service discovery | `true`, `false` | `true` |
-
-**How it works:**
-1. **DNS Resolution**: Service names resolve to all available pod/container IPs
-2. **Client-Side Distribution**: gRPC client distributes requests across all instances
-3. **Automatic Scaling**: New instances are automatically discovered via DNS
-
-**Scaling example:**
-```bash
-# Scale connector service to 3 instances
-docker-compose up --scale connector-service=3
-
-# Kubernetes scaling
-kubectl scale deployment connector-service --replicas=3
-```
-
-> **Important:** All scaled instances must use the same port. Load balancing happens at the gRPC client level, not at the service level.
-
----
-
-## Observability
-
-### OpenTelemetry (Distributed Tracing)
-
-OpenTelemetry provides distributed tracing, metrics export, and structured logging for the entire microservices stack.
-
-| Variable | Description | Default | Impact |
-|----------|-------------|---------|--------|
-| `OTEL_TRACES_ENABLED` | Enable distributed tracing | `false` | Traces gRPC calls, HTTP requests, database queries |
-| `OTEL_METRICS_ENABLED` | Export metrics via OTLP | `false` | Exports performance metrics to collector |
-| `OTEL_LOGS_ENABLED` | Forward logs via OTLP | `false` | Structured logs to centralized system |
-| `OTEL_ENDPOINT` | OTLP collector endpoint | `http://jaeger-all-in-one:4317` | Target for telemetry data |
-
-**Visualize traces in Jaeger:**
-- Access Jaeger UI: `http://localhost:16686`
-- View request flows across all services
-- Identify performance bottlenecks
-- Debug distributed transactions
-
-**Production example:**
-```bash
-OTEL_TRACES_ENABLED=true
-OTEL_METRICS_ENABLED=true
-OTEL_LOGS_ENABLED=true
-OTEL_ENDPOINT=http://otel-collector.monitoring.svc.cluster.local:4317
-```
-
-**Development (minimal overhead):**
-```bash
-OTEL_TRACES_ENABLED=false
-OTEL_METRICS_ENABLED=false
-OTEL_LOGS_ENABLED=false
-```
-
-### Micrometer Metrics
-
-Micrometer provides JVM, HTTP, and gRPC metrics with Prometheus export.
-
-| Variable | Description | Default | Endpoint |
-|----------|-------------|---------|----------|
-| `MICROMETER_ENABLED` | Enable Micrometer metrics collection | `false` | - |
-| `PROMETHEUS_ENABLED` | Expose Prometheus metrics endpoint | `false` | `/q/metrics` |
-| `PROMETHEUS_PATH` | Custom metrics endpoint path | `/q/metrics` | - |
-
-**Detailed metrics binders (optional):**
-```bash
-MICROMETER_BINDER_JVM=true           # JVM memory, GC, threads
-MICROMETER_BINDER_SYSTEM=true        # CPU, file descriptors, uptime
-HTTP_SERVER_ENABLED=true             # HTTP request/response metrics
-GRPC_SERVER_ENABLED=true             # gRPC server call metrics
-GRPC_CLIENT_ENABLED=true             # gRPC client call metrics
-```
-
-**Access Prometheus metrics:**
-```bash
-# Connector Service
-curl http://localhost:8010/q/metrics
-
-# Live Data Service
-curl http://localhost:8003/q/metrics
-```
-
-**Grafana dashboards:**
-- Pre-configured dashboards in `monitoring/grafana/dashboards/`
-- Access Grafana: `http://localhost:3000` (admin/zequent2024)
-
----
-
-## Complete Configuration Examples
-
-### Production (Full Observability)
-
-```bash
-# Profile
-QUARKUS_PROFILE=docker
-
-# Infrastructure
-REDIS_URL=redis://redis.production:6379
-DATABASE_URL=jdbc:postgresql://timescaledb.production:5432/zequent_db
-DATABASE_REACTIVE_URL=postgresql://timescaledb.production:5432/zequent_db
-DATABASE_USER=zequent_app
-DATABASE_PASSWORD=<secure-password>
-
-# Service Discovery
-CONNECTOR_SERVICE_HOST=connector-service
-CONNECTOR_SERVICE_PORT=8010
-LIVE_DATA_SERVICE_HOST=live-data-service
-LIVE_DATA_SERVICE_PORT=8003
-REMOTE_CONTROL_SERVICE_HOST=remote-control-service
-REMOTE_CONTROL_SERVICE_PORT=8002
-MISSION_AUTONOMY_SERVICE_HOST=mission-autonomy-service
-MISSION_AUTONOMY_SERVICE_PORT=8004
-
-# Load Balancing
-GRPC_LOAD_BALANCING_POLICY=round_robin
-GRPC_ENABLE_DNS_RESOLVER=true
-
-# Observability
-OTEL_TRACES_ENABLED=true
-OTEL_METRICS_ENABLED=true
-OTEL_LOGS_ENABLED=true
-OTEL_ENDPOINT=http://otel-collector:4317
-MICROMETER_ENABLED=true
-PROMETHEUS_ENABLED=true
-```
-
-### Development (Minimal Overhead)
-
-```bash
-# Profile
-QUARKUS_PROFILE=dev
-
-# Observability (disabled for performance)
-OTEL_TRACES_ENABLED=false
-OTEL_METRICS_ENABLED=false
-OTEL_LOGS_ENABLED=false
-MICROMETER_ENABLED=false
-PROMETHEUS_ENABLED=false
-```
-
-> **Note:** In `dev` profile, services automatically use localhost defaults. No infrastructure variables needed.
-
-### Kubernetes with Custom Namespace
-
-```bash
-# Profile
-QUARKUS_PROFILE=k8s
-
-# Infrastructure
-REDIS_URL=redis://redis.zequent-prod.svc.cluster.local:6379
-DATABASE_URL=jdbc:postgresql://timescaledb.zequent-prod.svc.cluster.local:5432/zequent_db
-DATABASE_REACTIVE_URL=postgresql://timescaledb.zequent-prod.svc.cluster.local:5432/zequent_db
-DATABASE_USER=zequent_app
-DATABASE_PASSWORD=<from-secret>
-
-# Service Discovery (FQDN)
-CONNECTOR_SERVICE_HOST=connector-service.zequent-prod.svc.cluster.local
-LIVE_DATA_SERVICE_HOST=live-data-service.zequent-prod.svc.cluster.local
-REMOTE_CONTROL_SERVICE_HOST=remote-control-service.zequent-prod.svc.cluster.local
-MISSION_AUTONOMY_SERVICE_HOST=mission-autonomy-service.zequent-prod.svc.cluster.local
-
-# Load Balancing
-GRPC_LOAD_BALANCING_POLICY=round_robin
-GRPC_ENABLE_DNS_RESOLVER=true
-
-# Observability
-OTEL_TRACES_ENABLED=true
-OTEL_METRICS_ENABLED=true
-OTEL_LOGS_ENABLED=true
-OTEL_ENDPOINT=http://otel-collector.monitoring.svc.cluster.local:4317
-MICROMETER_ENABLED=true
-PROMETHEUS_ENABLED=true
-```
-
----
-
-## Container Port Overrides (Optional)
-
-Override default container ports to avoid conflicts with other services on the host.
-
-```bash
-CONNECTOR_PORT=8010
-LIVE_DATA_PORT=8003
-REMOTE_CONTROL_PORT=8002
-MISSION_AUTONOMY_PORT=8004
-```
-
-**Example with custom ports:**
-```yaml
-# docker-compose.local.yml
-services:
-  connector-service:
-    ports:
-      - "${CONNECTOR_PORT:-8010}:8010"
-```
-
----
-
-## Important Notes
-
-### 1. Profile-Specific Behavior
-
-- **`dev` profile**: Most environment variables are ignored. Services use localhost defaults defined in `application.properties`.
-- **`docker` profile**: Uses service names for DNS resolution (e.g., `redis`, `connector-service`).
-- **`k8s` profile**: Supports both short names (`redis`) and fully qualified domain names (`redis.namespace.svc.cluster.local`).
-
-### 2. Load Balancing
-
-Load balancing works automatically in Docker Compose and Kubernetes when:
-- Multiple replicas/pods are running
-- `GRPC_ENABLE_DNS_RESOLVER=true`
-- All instances use the same port
-
-### 3. Redis Configuration
-
-Ensure consistency across all services. Most services use `REDIS_URL=redis://redis:6379`.
-
-### 4. Security Considerations
-
-- **Never commit** `.env.custom` files with production credentials
-- Use secrets management (Kubernetes Secrets, HashiCorp Vault) for sensitive data
-- Rotate database passwords regularly
-- Use TLS for Redis and PostgreSQL in production
-
-### 5. Monitoring Stack
-
-The framework includes a complete monitoring stack:
-- **Jaeger**: Distributed tracing (`http://localhost:16686`)
-- **Prometheus**: Metrics collection (`http://localhost:9090`)
-- **Grafana**: Visualization dashboards (`http://localhost:3000`)
-
-Enable observability in production to monitor service health and performance.
-
----
-
-## Troubleshooting
-
-### Service Cannot Resolve Redis
-
-**Symptom**: Service fails to connect to Redis with DNS resolution errors.
-
-**Solution**: Ensure `REDIS_URL` uses the correct format:
-```bash
-# Correct
-REDIS_URL=redis://redis:6379
-
-# Incorrect (missing redis:// scheme)
-REDIS_URL=redis:6379
-```
-
-### gRPC Load Balancing Not Working
-
-**Symptom**: Requests always go to the same service instance.
-
-**Solution**: Verify DNS resolver is enabled:
-```bash
-GRPC_ENABLE_DNS_RESOLVER=true
-GRPC_LOAD_BALANCING_POLICY=round_robin
-```
-
-### Observability Data Not Appearing
-
-**Symptom**: No traces in Jaeger or metrics in Prometheus.
-
-**Solution**: Check that observability is enabled:
-```bash
-OTEL_TRACES_ENABLED=true
-MICROMETER_ENABLED=true
-PROMETHEUS_ENABLED=true
-```
-
-Verify the OTLP endpoint is reachable:
-```bash
-curl http://jaeger-all-in-one:4317
-```
-
----
-
-## Related Documentation
-
-- [DJI Adapter Deployment](edge-sdk/edge-sdk-dji-adapter-deployment.md)
-- [Edge SDK Overview](edge-sdk/edge-sdk-overview.md)
-- [Client SDK Quickstart](client-sdk/QUICKSTART.md)
-- [Application Properties](../services/*/src/main/resources/application.properties)
-
----
-
-**Last Updated**: 2026-06-15
-**Framework Version**: 1.2.0
+- Run platform services and provided adapters from published container images.
+- Use versioned image tags for production.
+- Keep secrets outside Git.
+- Use TLS and deployment-managed secrets for production environments.
+- Use the Client SDKs for customer applications and the Edge SDKs for custom adapters.
