@@ -1,0 +1,121 @@
+x-zequent-env: &zequent-env
+  env_file:
+    - .env
+
+services:
+  connector-service:
+    <<: *zequent-env
+    image: ghcr.io/zequent/connector-service:latest
+    pull_policy: always
+    ports:
+      - "8010:8010"
+    restart: unless-stopped
+
+  live-data-service:
+    <<: *zequent-env
+    image: ghcr.io/zequent/live-data-service:latest
+    pull_policy: always
+    depends_on:
+      - connector-service
+    ports:
+      - "8003:8003"
+    restart: unless-stopped
+
+  remote-control-service:
+    <<: *zequent-env
+    image: ghcr.io/zequent/remote-control-service:latest
+    pull_policy: always
+    depends_on:
+      - connector-service
+      - live-data-service
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+
+  mission-autonomy-service:
+    <<: *zequent-env
+    image: ghcr.io/zequent/mission-autonomy-service:latest
+    pull_policy: always
+    depends_on:
+      - connector-service
+      - remote-control-service
+    ports:
+      - "8004:8004"
+    restart: unless-stopped
+
+  admin-console-service:
+    <<: *zequent-env
+    image: ghcr.io/zequent/admin-console-service:latest
+    pull_policy: always
+    depends_on:
+      - connector-service
+      - live-data-service
+      - remote-control-service
+      - mission-autonomy-service
+    ports:
+      - "8005:8005"
+    restart: unless-stopped
+
+  admin-console-ui:
+    <<: *zequent-env
+    image: ghcr.io/zequent/zqnt-admin-console-dashboard:latest
+    pull_policy: always
+    depends_on:
+      - admin-console-service
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+
+  edge-dji:
+    <<: *zequent-env
+    image: ghcr.io/zequent/edge-dji:latest
+    pull_policy: always
+    profiles: ["edge-dji"]
+    ports:
+      - "9001:9001"
+    restart: unless-stopped
+
+  edge-betaflight:
+    <<: *zequent-env
+    image: ghcr.io/zequent/edge-betaflight:latest
+    pull_policy: always
+    profiles: ["edge-betaflight"]
+    ports:
+      - "9002:9001"
+    restart: unless-stopped
+
+  edge-mavlink:
+    <<: *zequent-env
+    image: ghcr.io/zequent/edge-mavlink:latest
+    pull_policy: always
+    profiles: ["edge-mavlink"]
+    ports:
+      - "9003:9001"
+    restart: unless-stopped
+
+  edge-rns:
+    <<: *zequent-env
+    image: ghcr.io/zequent/edge-rns:latest
+    pull_policy: always
+    profiles: ["edge-rns"]
+    ports:
+      - "9004:9001"
+    restart: unless-stopped
+
+  edge-sapient:
+    <<: *zequent-env
+    image: ghcr.io/zequent/edge-sapient:latest
+    pull_policy: always
+    profiles: ["edge-sapient"]
+    ports:
+      - "9005:9001"
+    restart: unless-stopped
+
+  ai-adapter:
+    <<: *zequent-env
+    image: ghcr.io/zequent/ai-adapter:latest
+    pull_policy: always
+    profiles: ["ai-adapter"]
+    ports:
+      - "9010:9001"
+    restart: unless-stopped
