@@ -33,8 +33,8 @@ Open `pom.xml` and add the Edge SDK and the GitHub Packages repository:
     <!-- Zequent Edge SDK -->
     <dependency>
         <groupId>com.zqnt.sdk</groupId>
-        <artifactId>edge-sdk</artifactId>
-        <version>1.0.0</version>
+        <artifactId>edge-java-sdk</artifactId>
+        <version>1.2.7</version>
     </dependency>
 </dependencies>
 
@@ -45,6 +45,8 @@ Open `pom.xml` and add the Edge SDK and the GitHub Packages repository:
     </repository>
 </repositories>
 ```
+
+Check your package registry for the latest published version.
 
 Make sure your `~/.m2/settings.xml` has the GitHub credentials:
 
@@ -160,8 +162,7 @@ package com.example.edge;
 
 import com.zqnt.sdk.edge.livedata.application.LiveDataService;
 import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
-import com.zequent.framework.common.proto.LiveDataType;
-import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
+import com.zqnt.utils.edge.sdk.domains.TelemetryData;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
@@ -178,19 +179,26 @@ public class TelemetryProducer {
     }
 
     public void sendAssetTelemetry(String sn) {
-        AssetTelemetryData assetData = new AssetTelemetryData();
-        assetData.setLatitude(47.3769f);
-        assetData.setLongitude(8.5417f);
-        assetData.setAbsoluteAltitude(450.0f);
-        assetData.setEnvironmentTemp(22.5f);
-        assetData.setHumidity(65.0f);
+        TelemetryData.AssetDetails assetDetails = TelemetryData.AssetDetails.builder()
+            .environmentTemp(22.5f)
+            .humidity(65.0f)
+            .build();
+
+        TelemetryData telemetry = TelemetryData.builder()
+            .id(UUID.randomUUID().toString())
+            .timestamp(LocalDateTime.now())
+            .sn(sn)
+            .latitude(47.3769)
+            .longitude(8.5417)
+            .absoluteAltitude(450.0f)
+            .asset(assetDetails)
+            .build();
 
         TelemetryRequestData data = TelemetryRequestData.builder()
             .sn(sn)
             .tid(UUID.randomUUID().toString())
             .timestamp(LocalDateTime.now())
-            .type(LiveDataType.ASSET_TELEMETRY)
-            .assetTelemetry(assetData)
+            .telemetry(telemetry)
             .build();
 
         liveDataService.produceTelemetryData(data)
@@ -210,7 +218,7 @@ public class TelemetryProducer {
 Before running your adapter, start the required platform services from the published container images:
 
 ```bash
-docker compose -f docs/docker-compose.customer.yml up -d
+docker compose -f docker-compose.customer.yml up -d
 ```
 
 The compose file uses one deployment-local `.env` file through `env_file`.
@@ -258,7 +266,7 @@ grpcurl -plaintext -d '{
     "longitude": 8.5417,
     "altitude": 100.0
   }
-}' localhost:9001 com.zequent.framework.sdks.edge.proto.EdgeAdapterService/TakeOff
+}' localhost:9001 zqnt.EdgeAdapterService/TakeOff
 ```
 
 ---

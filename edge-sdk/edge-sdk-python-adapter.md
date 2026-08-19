@@ -45,14 +45,16 @@ Always pass `ctx.tid` and `ctx.sn` back into your `EdgeResponse` to keep the pla
 
 ## EdgeResponse
 
-The unified response type used by every unary command:
+The unified response type used by every unary command. Factories are named `ok`/`fail`, not `success`/`error`:
 
 ```python
-EdgeResponse.success(tid, sn, message="Takeoff initiated")
-EdgeResponse.error(tid, sn, message="Hardware fault", code=ErrorCode.HARDWARE_ERROR)
+EdgeResponse.ok(tid, sn, message="Takeoff initiated")
+EdgeResponse.fail(tid, sn, ErrorMessage(message="Hardware fault", code=ErrorCode.ASSET_ERROR))
 EdgeResponse.not_supported(tid, sn)            # default for un-overridden methods
-EdgeResponse.in_progress(tid, sn, progress=CommandProgress(percent=42, status="climbing"))
+EdgeResponse.ok(tid, sn, progress=CommandProgress(progress=42.0, state="climbing", left_time_seconds=30.0))
 ```
+
+`ok(...)` also accepts `external_execution_id` — set it when the command you just accepted keeps running asynchronously, so a later notification can be correlated back to it (see [Live Data](edge-sdk-python-live-data.md#notifications)).
 
 For long-running commands you can stream multiple `EdgeResponse` objects via the streaming variants (see below).
 
@@ -123,21 +125,27 @@ The base class organises methods into groups. You only override what your hardwa
 
 ---
 
-## Streaming responses
+## Reporting progress for long-running commands
 
-For commands that produce progress updates (typically tasks), override the streaming variants:
+There is no streaming variant of `EdgeResponse` for progress updates — `start_task` (and `send_custom_command` for vendor-specific commands) should return immediately with `EdgeResponse.ok(...)` and report progress separately via `LiveDataService.produce_notification(CommandExecutionEvent(...))`. See [Live Data — Notifications](edge-sdk-python-live-data.md#notifications).
 
 ```python
-from collections.abc import AsyncIterator
+async def start_task(self, ctx: RequestContext, task_id: str) -> EdgeResponse:
+    self._executor.submit(task_id)  # runs in the background, reports progress itself
+    return EdgeResponse.ok(ctx.tid, ctx.sn, "Task started")
 
-async def start_task_stream(
-    self, ctx: RequestContext, task: Task,
-) -> AsyncIterator[EdgeResponse]:
-    yield EdgeResponse.in_progress(ctx.tid, ctx.sn, CommandProgress(percent=0))
-    async for update in self._run(task):
-        yield EdgeResponse.in_progress(ctx.tid, ctx.sn, update)
-    yield EdgeResponse.success(ctx.tid, ctx.sn, "Task complete")
+async def _on_progress(self, task_id: str, percent: float):
+    await self._live.produce_notification(
+        CommandExecutionEvent(
+            external_execution_id=task_id,
+            status=CommandExecutionStatus.RUNNING,
+            sn=self._sn,
+            progress=percent / 100,
+        )
+    )
 ```
+
+The one real async-generator method on `EdgeAdapter` is `get_detections`, used for pull-based detection streaming (see [Method groups](#method-groups) above) — it is not a general progress-reporting mechanism.
 
 ---
 
@@ -145,7 +153,7 @@ async def start_task_stream(
 
 - **Keep methods async-friendly.** Wrap blocking SDK calls with `asyncio.to_thread(...)` or use the vendor SDK's async API.
 - **Always honour `ctx.tid` and `ctx.sn`** when constructing responses; the platform correlates by these.
-- **Don't catch broad exceptions silently.** Convert known hardware errors to `EdgeResponse.error(...)` with a meaningful `ErrorCode`; let the gRPC server surface the rest.
+- **Don't catch broad exceptions silently.** Convert known hardware errors to `EdgeResponse.fail(tid, sn, ErrorMessage(...))` with a meaningful `ErrorCode`; let the gRPC server surface the rest.
 - **Don't keep state on the adapter** for per-request lifetimes. Use the `tid` as a key into a per-command map if you must.
 - **Use `_auto_capabilities`** rather than maintaining the capability list manually.
 

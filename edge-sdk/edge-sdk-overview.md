@@ -28,7 +28,7 @@ The primary interface that every edge adapter must implement. It declares comman
 
 ### ConnectorService
 
-Provides CRUD operations against the platform's Connector Service over gRPC. Use it to register and manage assets, missions, tasks, schedulers, waypoints, and organizations.
+Provides access to the platform's Connector Service over gRPC: register and manage your asset(s), look up schedulers and organizations, and report which commands your adapter supports through the Skill Contract registry.
 
 ### LiveDataService
 
@@ -36,7 +36,7 @@ Manages persistent gRPC telemetry streams. It lets you push asset and sub-asset 
 
 ### MissionAutonomyService
 
-Communicates with the Mission Autonomy Service over gRPC to create, update, and retrieve missions, tasks, and schedulers.
+Communicates with the Mission Autonomy Service over gRPC to look up scheduler definitions. Task execution itself is driven by the platform calling *into* your adapter (see `EdgeAdapterService`), not by the adapter polling this service — and multi-step, graph-based automations (Applications/Skills) are authored and triggered through the **Client SDK**, not the Edge SDK. See [Applications & Skills](../concepts/applications-and-skills.md).
 
 ## Available Documentation
 
@@ -48,7 +48,7 @@ Communicates with the Mission Autonomy Service over gRPC to create, update, and 
 | [Edge Adapter](edge-sdk-adapter.md) | Implementing the EdgeAdapterService interface |
 | [Live Data](edge-sdk-live-data.md) | Producing telemetry data streams |
 | [Connector](edge-sdk-connector.md) | Asset and resource management via the Connector Service |
-| [Mission Autonomy](edge-sdk-mission-autonomy.md) | Working with missions, tasks, and schedulers |
+| [Mission Autonomy](edge-sdk-mission-autonomy.md) | Scheduler lookup, task lifecycle, and custom commands |
 | [Models Reference](edge-sdk-models.md) | Request, response, and telemetry data model reference |
 
 ## Quick Start
@@ -58,10 +58,12 @@ Add the Edge SDK dependency to your project:
 ```xml
 <dependency>
   <groupId>com.zqnt.sdk</groupId>
-  <artifactId>edge-sdk</artifactId>
-  <version>1.0.0</version>
+  <artifactId>edge-java-sdk</artifactId>
+  <version>1.2.7</version>
 </dependency>
 ```
+
+Check your package registry for the latest published version.
 
 Configure your edge in `application.properties`:
 

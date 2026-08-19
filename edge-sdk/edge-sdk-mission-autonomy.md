@@ -1,188 +1,30 @@
 # Edge SDK -- Mission Autonomy Service
 
-The `MissionAutonomyService` interface provides access to the platform's Mission Autonomy Service over gRPC. It allows edge adapters to create, update, and retrieve missions, tasks, and schedulers programmatically.
+`MissionAutonomyService` is a small, focused interface: it lets an edge adapter look up a **scheduler** definition directly from the Mission Autonomy service. Everything else related to running automated behavior on an asset — receiving task lifecycle calls, reporting progress, executing Applications/Skills — happens through other parts of the SDK, described below.
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [How It Works](#how-it-works)
 - [MissionAutonomyService Interface](#missionautonomyservice-interface)
-- [Missions](#missions)
-- [Tasks](#tasks)
-- [Schedulers](#schedulers)
+- [Where task execution actually happens](#where-task-execution-actually-happens)
 - [Configuration](#configuration)
-- [Usage in an Adapter](#usage-in-an-adapter)
 
 ---
 
 ## Overview
 
-The Mission Autonomy Service is responsible for the full lifecycle of missions within the Zequent platform: creation, scheduling, execution tracking, and completion. From the edge side, you interact with this service primarily to:
+Most edge adapters never call `MissionAutonomyService` directly. The platform drives task execution by calling *into* your adapter (`prepareTask` / `startTask` / `pauseTask` / `resumeTask` / `stopTask` / `cancelExecution` on `EdgeAdapterService`), and your adapter reports progress back over the Live Data connection — it doesn't poll or manage missions itself.
 
-- Retrieve mission and task definitions that the platform has scheduled for this device.
-- Report mission status or create missions programmatically.
-- Look up task details (including waypoints via the Connector Service) before executing them on the hardware.
-- Retrieve scheduler information for timed or recurring missions.
-
-The Edge SDK provides the `MissionAutonomyService` interface and its default implementation `MissionAutonomyServiceImpl`, which handles gRPC communication with the `MutinyMissionAutonomyServiceGrpc` stub.
-
----
-
-## How It Works
-
-```
-Your Adapter Code
-      |
-      v
-MissionAutonomyService (interface)
-      |
-      v
-MissionAutonomyServiceImpl  --(gRPC)-->  Mission Autonomy Service (platform)
-```
-
-The implementation is created via a CDI producer that injects the `MutinyMissionAutonomyServiceGrpc.MutinyMissionAutonomyServiceStub`. All methods return Mutiny `Uni` types for reactive composition.
-
----
-
-## MissionAutonomyService Interface
+`MissionAutonomyService` exists for the one case where an adapter needs scheduler metadata directly:
 
 ```java
 public interface MissionAutonomyService {
-
-    CompletableFuture<MissionDTO> createMission(CreateMissionRequest createMissionRequest);
-
-    CompletableFuture<MissionDTO> updateMission(UpdateMissionRequest updateMissionRequest);
-
-    CompletableFuture<MissionDTO> getMission(GetMissionRequest getRequest);
-
-    CompletableFuture<TaskDTO> getTask(GetTaskRequest getTaskRequest);
-
-    CompletableFuture<TaskDTO> getTaskByFlightId(GetTaskRequest getTaskRequest);
-
     CompletableFuture<SchedulerDTO> getScheduler(GetSchedulerRequest getSchedulerRequest);
 }
 ```
 
-All request types (`CreateMissionRequest`, `UpdateMissionRequest`, `GetMissionRequest`, `GetTaskRequest`, `GetSchedulerRequest`) are Protobuf-generated classes from the `mission-autonomy.proto` definition.
-
----
-
-## Missions
-
-### Get a Mission
-
-Retrieve mission details by ID:
-
 ```java
-import com.zequent.framework.services.mission.proto.GetMissionRequest;
-
-GetMissionRequest request = GetMissionRequest.newBuilder()
-    .setMissionId("mission-uuid")
-    .build();
-
-missionAutonomyService.getMission(request)
-    .thenAccept(mission -> log.info("Mission: {} (ID: {})", mission.getName(), mission.getId()))
-    .exceptionally(err -> {
-        log.error("Failed to get mission", err);
-        return null;
-    });
-```
-
-### Create a Mission
-
-```java
-import com.zequent.framework.services.mission.proto.CreateMissionRequest;
-
-CreateMissionRequest request = CreateMissionRequest.newBuilder()
-    .setName("Perimeter Patrol")
-    // set other fields as needed
-    .build();
-
-missionAutonomyService.createMission(request)
-    .thenAccept(mission -> log.info("Mission created: {}", mission.getId()))
-    .exceptionally(err -> {
-        log.error("Failed to create mission", err);
-        return null;
-    });
-```
-
-### Update a Mission
-
-```java
-import com.zequent.framework.services.mission.proto.UpdateMissionRequest;
-
-UpdateMissionRequest request = UpdateMissionRequest.newBuilder()
-    .setMissionId("mission-uuid")
-    .setName("Perimeter Patrol v2")
-    .build();
-
-missionAutonomyService.updateMission(request)
-    .thenAccept(mission -> log.info("Mission updated: {}", mission.getName()))
-    .exceptionally(err -> {
-        log.error("Failed to update mission", err);
-        return null;
-    });
-```
-
-### MissionData Model
-
-The `MissionData` POJO contains:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `UUID` | Unique mission identifier |
-| `name` | `String` | Mission name |
-
----
-
-## Tasks
-
-Tasks represent individual executable units within a mission, such as a flight plan or patrol route.
-
-### Get a Task by ID
-
-```java
-import com.zequent.framework.services.mission.proto.GetTaskRequest;
-
-GetTaskRequest request = GetTaskRequest.newBuilder()
-    .setTaskId("task-uuid")
-    .build();
-
-missionAutonomyService.getTask(request)
-    .thenAccept(task -> log.info("Task retrieved: {}", task))
-    .exceptionally(err -> {
-        log.error("Failed to get task", err);
-        return null;
-    });
-```
-
-### Get a Task by Flight ID
-
-When a task is associated with a flight execution, you can look it up by the flight identifier:
-
-```java
-GetTaskRequest request = GetTaskRequest.newBuilder()
-    .setTaskId("flight-id-123")
-    .build();
-
-missionAutonomyService.getTaskByFlightId(request)
-    .thenAccept(task -> log.info("Task for flight: {}", task))
-    .exceptionally(err -> {
-        log.error("Failed to get task by flight ID", err);
-        return null;
-    });
-```
-
----
-
-## Schedulers
-
-Schedulers define the timing and recurrence of mission or task execution.
-
-### Get a Scheduler
-
-```java
-import com.zequent.framework.services.mission.proto.GetSchedulerRequest;
+import com.zqnt.utils.mission.proto.GetSchedulerRequest;
 
 GetSchedulerRequest request = GetSchedulerRequest.newBuilder()
     .setSchedulerId("scheduler-uuid")
@@ -196,13 +38,35 @@ missionAutonomyService.getScheduler(request)
     });
 ```
 
+Scheduler CRUD (create/update/delete) is available through `ConnectorService` instead — see [Connector](edge-sdk-connector.md#schedulers).
+
+---
+
+## Where task execution actually happens
+
+| Concern | Where it lives |
+| --- | --- |
+| Receiving `prepareTask`/`startTask`/`pauseTask`/`resumeTask`/`stopTask`/`cancelExecution` calls | `EdgeAdapterService` — see [Edge Adapter](edge-sdk-adapter.md#task-execution) |
+| Reporting progress/telemetry while a task runs | `LiveDataService` — see [Live Data](edge-sdk-live-data.md) |
+| Declaring which commands your adapter supports | `ConnectorService`'s Skill Contract registry — see [Connector](edge-sdk-connector.md#skill-contracts) |
+| Authoring, deploying, and triggering multi-step Applications/Skills | The **Client SDK**, used by customer applications — see [Applications & Skills](../concepts/applications-and-skills.md) |
+
+A typical `prepareTask` implementation looks up whatever it needs (e.g. a stored flight plan) via `ConnectorService`'s asset payload methods, rather than through `MissionAutonomyService`:
+
+```java
+@Override
+public CompletableFuture<CommandResult> prepareTask(String taskId, String tid) {
+    // Fetch whatever your adapter needs to execute this task — e.g. a previously
+    // uploaded flight plan stored as an asset payload — then stage it on the device.
+    return CompletableFuture.completedFuture(
+        CommandResult.success("Task prepared", tid, taskId)
+    );
+}
+```
+
 ---
 
 ## Configuration
-
-The Mission Autonomy Service gRPC client can be configured if your adapter needs to connect to it. In most setups, the mission autonomy interaction happens through the Connector Service, but direct access is available when needed.
-
-Add to `application.properties` if not already present:
 
 ```properties
 quarkus.grpc.clients.mission-autonomy-service.host=localhost
@@ -216,61 +80,4 @@ For container deployments:
 quarkus.grpc.clients.mission-autonomy-service.host=mission-autonomy-service
 ```
 
----
-
-## Usage in an Adapter
-
-A typical pattern is to use the Mission Autonomy Service together with the Connector Service when preparing or executing tasks. For example, when a `prepareTask` command comes in from the platform:
-
-```java
-@ApplicationScoped
-public class MyAdapter implements EdgeAdapterService {
-
-    private final MissionAutonomyService missionService;
-    private final ConnectorService connectorService;
-
-    public MyAdapter(MissionAutonomyService missionService, ConnectorService connectorService) {
-        this.missionService = missionService;
-        this.connectorService = connectorService;
-    }
-
-    @Override
-    public CompletableFuture<CommandResult> prepareTask(String taskId, String tid) {
-        // 1. Fetch task details from Mission Autonomy
-        return missionService.getTask(
-                GetTaskRequest.newBuilder().setTaskId(taskId).build()
-            )
-            .thenCompose(task -> {
-                // 2. Fetch waypoints from Connector
-                return connectorService.getWaypointsByTaskId(taskId);
-            })
-            .thenApply(waypoints -> {
-                if (waypoints == null || waypoints.isEmpty()) {
-                    return CommandResult.error("No waypoints found for task", taskId);
-                }
-                // 3. Generate flight plan and upload to device
-                generateFlightPlan(waypoints);
-                return CommandResult.success("Task prepared", tid, taskId);
-            });
-    }
-
-    private void generateFlightPlan(List<WaypointDTO> waypoints) {
-        // Implementation depends on your device vendor
-    }
-}
-```
-
-This pattern -- fetch task, fetch waypoints, generate plan -- is used by the reference DJI adapter implementation and can be adapted for any vendor.
-
----
-
-## API Summary
-
-| Method | Return Type | Description |
-|--------|-------------|-------------|
-| `createMission(CreateMissionRequest)` | `CompletableFuture<MissionDTO>` | Create a new mission |
-| `updateMission(UpdateMissionRequest)` | `CompletableFuture<MissionDTO>` | Update an existing mission |
-| `getMission(GetMissionRequest)` | `CompletableFuture<MissionDTO>` | Get mission by ID |
-| `getTask(GetTaskRequest)` | `CompletableFuture<TaskDTO>` | Get task by ID |
-| `getTaskByFlightId(GetTaskRequest)` | `CompletableFuture<TaskDTO>` | Get task by flight ID |
-| `getScheduler(GetSchedulerRequest)` | `CompletableFuture<SchedulerDTO>` | Get scheduler by ID |
+See the [Configuration Guide](edge-sdk-configuration.md) for the complete reference.

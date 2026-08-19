@@ -21,7 +21,7 @@ Open `pom.xml` and add:
 <dependency>
     <groupId>com.zqnt.sdk</groupId>
     <artifactId>client-java-sdk</artifactId>
-    <version>1.2.4</version>
+    <version>1.2.10</version>
 </dependency>
 ```
 
@@ -103,11 +103,7 @@ curl -X POST "http://localhost:8080/drone/takeoff?sn=YOUR_DEVICE_SN&lat=47.3769&
 curl -X POST "http://localhost:8080/drone/land?sn=YOUR_DEVICE_SN"
 ```
 
-## That's it! 
-
-**No interfaces to implement!**
-**No complex configuration!**
-**Just add dependency and start!**
+That's the whole integration — no interfaces to implement, no manual gRPC channel setup.
 
 ## Switch Environment
 
@@ -263,31 +259,24 @@ public class TelemetryWebSocket {
 }
 ```
 
-## The Most Important:
+## Summary
 
-###  What the Customer Gets:
+What you get out of the box:
 
-1. **Add dependency** → Done!
-2. **`@Inject ZequentClient`** → Auto-configured!
-3. **Switch environment via `.env`** → No code change!
-4. **All features included:**
-   - Retry Logic
-   - Circuit Breaker
-   - Load Balancing
-   - Service Discovery
-   - Connection Management
+- Add the dependency, `@Inject ZequentClient` — auto-configured.
+- Switch environment via `.env` — no code change.
+- Retry logic, circuit breaker, load balancing, service discovery, and connection management included.
 
-###  What the Customer Does NOT Have to Do:
+What you don't have to write yourself:
 
-1. ~~Implement interfaces~~
-2. ~~Manually create channels~~
-3. ~~Configure gRPC stubs~~
-4. ~~Write retry logic~~
-5. ~~Implement circuit breaker~~
-6. ~~Change code for environment switches~~
+- gRPC channel setup or stub configuration.
+- Retry/circuit-breaker logic.
+- Environment-switch handling in code.
+
+For running multi-step automations instead of one-off commands, see [Applications & Skills](../concepts/applications-and-skills.md).
 
 ## Support
 
--  Complete Docs: [CONFIGURATION.md](CONFIGURATION.md)
--  Quick Start: [QUICKSTART.md](QUICKSTART.md)
--  Documentation: [../README.md](../README.md)
+- Complete docs: [CONFIGURATION.md](CONFIGURATION.md)
+- Quick start: [QUICKSTART.md](QUICKSTART.md)
+- Documentation: [../README.md](../README.md)

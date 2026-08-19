@@ -21,7 +21,7 @@ pip install zqnt-client-sdk
 ```toml
 [project]
 dependencies = [
-    "zqnt-client-sdk>=1.0.0",
+    "zqnt-client-sdk>=1.2.0",
 ]
 ```
 
@@ -212,13 +212,15 @@ async def telemetry_stream(sn: str, client: ZequentClient = Depends(get_client))
 You need the Zequent platform services running from the published container images. See [Zequent Documentation](../README.md) for the compose file.
 
 ```bash
-docker compose -f docs/docker-compose.customer.yml up -d
+docker compose -f docker-compose.customer.yml up -d
 ```
 
 ---
 
 ## Next steps
 
+- [Applications & Skills](../concepts/applications-and-skills.md) — running multi-step, graph-based automations instead of one-off commands
+- [Connector reference](CONNECTOR_PYTHON.md) — assets, organizations, schedulers, technical config
 - [Configuration reference](CONFIGURATION_PYTHON.md) — every env var the SDK reads
 - [Customer example](CUSTOMER_EXAMPLE_PYTHON.md) — full working FastAPI sample
 - [Asyncio patterns](ASYNCIO_FINAL.md) — lifecycles, streaming, cancellation

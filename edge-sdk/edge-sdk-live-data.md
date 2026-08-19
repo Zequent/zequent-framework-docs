@@ -1,18 +1,15 @@
 # Edge SDK -- Live Data Service
 
-The `LiveDataService` interface manages persistent gRPC telemetry streams between the edge adapter and the platform's Live Data Service. It provides both a POJO-based API (recommended for most use cases) and a raw Proto-based API for advanced scenarios.
+The `LiveDataService` interface manages persistent gRPC streams between the edge adapter and the platform's Live Data Service, for three kinds of outbound data: **telemetry**, **detections**, and **notifications**. It provides both a POJO-based API (recommended for most use cases) and a raw Proto-based API for advanced scenarios.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [How It Works](#how-it-works)
-- [POJO-based API (Recommended)](#pojo-based-api-recommended)
-- [Proto-based API (Advanced)](#proto-based-api-advanced)
+- [Telemetry](#telemetry)
+- [Detections](#detections)
+- [Notifications](#notifications)
 - [Stream Management](#stream-management)
-- [Telemetry Data Models](#telemetry-data-models)
-  - [TelemetryRequestData](#telemetryrequestdata)
-  - [AssetTelemetryData](#assettelemetrydata)
-  - [SubAssetTelemetryData](#subassettelemetrydata)
 - [Configuration](#configuration)
 - [Best Practices](#best-practices)
 
@@ -20,9 +17,13 @@ The `LiveDataService` interface manages persistent gRPC telemetry streams betwee
 
 ## Overview
 
-Live telemetry data is the real-time heartbeat of every asset in the Zequent ecosystem. Edge adapters continuously push telemetry -- position, battery, environmental readings, camera state, and more -- to the Live Data Service, where it is broadcast to Client SDK consumers and stored for historical analysis.
+Edge adapters continuously push data to the Live Data Service, where it's broadcast to Client SDK consumers, shown live in the Admin Console, and stored for historical analysis:
 
-The `LiveDataService` abstracts the complexity of managing gRPC streams. Internally, it creates one `BroadcastProcessor` per device serial number and subscribes it to the Live Data Service gRPC stub. Streams reconnect automatically on failure with exponential backoff.
+- **Telemetry** -- position, battery, environmental readings, camera state, and more.
+- **Detections** -- AI/vision detection results (e.g. from a `DetectTask`-style Skill).
+- **Notifications** -- asset online/offline events, and progress/completion events for commands accepted asynchronously via `CommandResult.accepted(...)` (see [Edge Adapter](edge-sdk-adapter.md#task-execution)).
+
+The `LiveDataService` abstracts the complexity of managing gRPC streams: one persistent stream per device per data kind, with automatic reconnection on failure (exponential backoff, 1s to 30s, 20% jitter, up to 10 attempts).
 
 ---
 
@@ -32,50 +33,58 @@ The `LiveDataService` abstracts the complexity of managing gRPC streams. Interna
 Your Adapter Code
       |
       v
-LiveDataService.produceTelemetryData(TelemetryRequestData)
+LiveDataService.produce*(...)
       |
       v
-TelemetryMapper (POJO --> Proto)
+Mapper (POJO --> Proto)
       |
       v
-BroadcastProcessor (one per device)
-      |
-      v
-gRPC stream --> Live Data Service (platform)
+Per-device stream --> Live Data Service (platform)
 ```
 
-Key characteristics of the implementation:
-
-- **One stream per device.** A `BroadcastProcessor` is created for each unique serial number and reused for all subsequent telemetry pushes.
-- **Automatic reconnection.** If the gRPC stream fails, it retries with exponential backoff (1s to 30s, 20% jitter, up to 10 attempts). If all retries are exhausted, it schedules a reconnect after 30 seconds.
-- **Graceful shutdown.** All streams are closed on application shutdown via the `@PreDestroy` lifecycle callback.
-- **Thread-safe.** Device-to-processor mappings are stored in a `ConcurrentHashMap`, and shutdown state is tracked with an `AtomicBoolean`.
+- **One stream per device, per data kind.** Reused across subsequent pushes.
+- **Automatic reconnection** with exponential backoff; a final failed attempt schedules a retry after 30 seconds.
+- **Graceful shutdown** via `@PreDestroy` -- all streams are closed on application shutdown.
+- **Thread-safe** -- device-to-stream mappings are stored in a `ConcurrentHashMap`.
 
 ---
 
-## POJO-based API (Recommended)
+## Telemetry
 
-### 1. Build the Telemetry Data Object
+### Build the telemetry payload
 
-Map data from your device into the `TelemetryRequestData` POJO:
+`TelemetryData` is a single class with two nested detail types, `AssetDetails` and `SubAssetDetails` -- set exactly one of `.asset(...)` / `.subAsset(...)` depending on whether this is dock/station-level or drone/vehicle-level telemetry. Shared position fields (`latitude`, `longitude`, `absoluteAltitude`, `relativeAltitude`, `windSpeed`, `heading`) live directly on `TelemetryData`, not duplicated per source.
 
 ```java
+import com.zqnt.utils.edge.sdk.domains.TelemetryData;
 import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
-import com.zequent.framework.common.proto.LiveDataType;
-import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
 import java.time.LocalDateTime;
+import java.util.UUID;
+
+TelemetryData.AssetDetails assetDetails = TelemetryData.AssetDetails.builder()
+    .environmentTemp(22.5f)
+    .humidity(65.0f)
+    .build();
+
+TelemetryData telemetry = TelemetryData.builder()
+    .id(UUID.randomUUID().toString())
+    .timestamp(LocalDateTime.now())
+    .sn("YOUR_DEVICE_SN")
+    .latitude(47.3769)
+    .longitude(8.5417)
+    .absoluteAltitude(450.0f)
+    .asset(assetDetails)
+    .build();
 
 TelemetryRequestData data = TelemetryRequestData.builder()
     .sn("YOUR_DEVICE_SN")
     .tid(UUID.randomUUID().toString())
-    .assetId("asset-uuid")
     .timestamp(LocalDateTime.now())
-    .type(LiveDataType.ASSET_TELEMETRY)
-    .assetTelemetry(assetTelemetry)  // see models section below
+    .telemetry(telemetry)
     .build();
 ```
 
-### 2. Send It
+### Send it
 
 ```java
 import com.zqnt.sdk.edge.livedata.application.LiveDataService;
@@ -92,14 +101,35 @@ public void sendTelemetry(TelemetryRequestData data) {
 }
 ```
 
----
-
-## Proto-based API (Advanced)
-
-For scenarios where you need full control over the Proto message (e.g., you already have telemetry data in Proto format from another system), use the direct Proto API:
+### Sub-asset (drone/vehicle) example
 
 ```java
-import com.zequent.framework.services.livedata.proto.ProduceTelemetryRequest;
+TelemetryData.SubAssetDetails subAssetDetails = TelemetryData.SubAssetDetails.builder()
+    .horizontalSpeed(5.2f)
+    .verticalSpeed(0.0f)
+    .mode(SubAssetMode.SUBASSET_MODE_MANUAL)
+    .batteryInformation(TelemetryData.BatteryInformation.builder()
+        .percentage("87")
+        .build())
+    .build();
+
+TelemetryData telemetry = TelemetryData.builder()
+    .id(UUID.randomUUID().toString())
+    .timestamp(LocalDateTime.now())
+    .sn("YOUR_DRONE_SN")
+    .latitude(47.3769)
+    .longitude(8.5417)
+    .absoluteAltitude(120.0f)
+    .subAsset(subAssetDetails)
+    .build();
+```
+
+See [Models Reference](edge-sdk-models.md#telemetrydata) for the full field list.
+
+### Proto-based API (advanced)
+
+```java
+import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
 
 ProduceTelemetryRequest protoRequest = ProduceTelemetryRequest.newBuilder()
     .setBase(RequestBase.newBuilder()
@@ -122,123 +152,98 @@ Both APIs share the same underlying stream infrastructure, so there is no perfor
 
 ---
 
-## Stream Management
+## Detections
 
-### Close a Single Device Stream
+Push AI/vision detection results the same way as telemetry:
 
 ```java
-liveDataService.closeStream("YOUR_DEVICE_SN")
-    .thenRun(() -> log.info("Stream closed for device"))
+import com.zqnt.sdk.edge.adapter.domains.DetectionRequestData;
+import com.zqnt.sdk.edge.adapter.domains.DetectionRequestData.DetectionResultData;
+import com.zqnt.sdk.edge.adapter.domains.DetectionRequestData.BoundingBoxData;
+
+DetectionRequestData batch = DetectionRequestData.builder()
+    .sn("YOUR_DEVICE_SN")
+    .tid(UUID.randomUUID().toString())
+    .timestamp(LocalDateTime.now())
+    .streamUrl("rtmp://...")
+    .detections(List.of(
+        DetectionResultData.builder()
+            .objectType("person")
+            .confidence(0.91f)
+            .boundingBox(BoundingBoxData.builder().x(120f).y(80f).width(64f).height(128f).build())
+            .build()
+    ))
+    .build();
+
+liveDataService.produceDetectionData(batch)
+    .thenRun(() -> log.debug("Detections sent"))
     .exceptionally(err -> {
-        log.error("Error closing stream", err);
+        log.error("Error sending detections", err);
         return null;
     });
 ```
-
-### Close All Streams
-
-Typically called during shutdown, but can be triggered manually:
-
-```java
-liveDataService.closeAllStreams()
-    .thenRun(() -> log.info("All streams closed"))
-    .exceptionally(err -> {
-        log.error("Error closing streams", err);
-        return null;
-    });
-```
-
-The `LiveDataServiceImpl` also registers a `@PreDestroy` callback that automatically closes all streams with a 10-second timeout on application shutdown.
 
 ---
 
-## Telemetry Data Models
+## Notifications
 
-### TelemetryRequestData
+Notifications cover two cases: reporting an asset's online/offline transitions, and reporting progress/completion of a command your adapter accepted asynchronously (see [`CommandResult.accepted(...)`](edge-sdk-adapter.md#commandresult)). Exactly one event field should be set per call.
 
-The top-level wrapper that carries one telemetry payload:
+```java
+import com.zqnt.sdk.edge.adapter.domains.NotificationRequestData;
+import com.zqnt.sdk.edge.adapter.domains.NotificationRequestData.CommandExecutionEventData;
+import com.zqnt.utils.events.proto.CommandExecutionStatus;
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `tid` | `String` | Transaction identifier for tracing |
-| `sn` | `String` | Device serial number |
-| `assetId` | `String` | Platform asset identifier |
-| `timestamp` | `LocalDateTime` | When the telemetry was recorded |
-| `type` | `LiveDataType` | `ASSET_TELEMETRY` or `SUBASSET_TELEMETRY` |
-| `assetTelemetry` | `AssetTelemetryData` | Asset-level telemetry (set when type is `ASSET_TELEMETRY`) |
-| `subAssetTelemetry` | `SubAssetTelemetryData` | Sub-asset-level telemetry (set when type is `SUBASSET_TELEMETRY`) |
+// Report progress for a command you previously accepted with an externalExecutionId
+NotificationRequestData progress = NotificationRequestData.builder()
+    .sn("YOUR_DEVICE_SN")
+    .timestamp(LocalDateTime.now())
+    .commandExecutionEvent(CommandExecutionEventData.builder()
+        .externalExecutionId(executionId)
+        .commandId("mission.waypoint.execute")
+        .status(CommandExecutionStatus.COMMAND_EXECUTION_STATUS_RUNNING)
+        .progress(0.42f)
+        .assetSn("YOUR_DEVICE_SN")
+        .build())
+    .build();
 
-### AssetTelemetryData
+liveDataService.produceNotificationData(progress)
+    .exceptionally(err -> {
+        log.error("Error sending notification", err);
+        return null;
+    });
+```
 
-Telemetry data for the primary asset (e.g., a dock or ground station):
+```java
+import com.zqnt.sdk.edge.adapter.domains.NotificationRequestData.AssetStatusEventData;
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Asset telemetry identifier |
-| `timestamp` | `LocalDateTime` | Measurement timestamp |
-| `latitude` | `Float` | GPS latitude |
-| `longitude` | `Float` | GPS longitude |
-| `absoluteAltitude` | `Float` | Altitude above sea level (meters) |
-| `relativeAltitude` | `Float` | Altitude above takeoff point (meters) |
-| `environmentTemp` | `Float` | Ambient temperature (Celsius) |
-| `insideTemp` | `Float` | Internal temperature (Celsius) |
-| `humidity` | `Float` | Humidity percentage |
-| `mode` | `AssetModes` | Current operational mode |
-| `rainfall` | `RainfallEnum` | Rainfall condition |
-| `heading` | `Float` | Heading in degrees |
-| `debugModeOpen` | `Boolean` | Whether debug mode is active |
-| `hasActiveManualControlSession` | `Boolean` | Whether manual control is active |
-| `coverState` | `AssetCoverStateEnum` | Dock cover state (open/closed/moving) |
-| `workingVoltage` | `Integer` | System voltage (mV) |
-| `workingCurrent` | `Integer` | System current (mA) |
-| `supplyVoltage` | `Integer` | Supply voltage (mV) |
-| `windSpeed` | `Float` | Wind speed (m/s) |
-| `positionValid` | `Boolean` | Whether GPS position is valid |
-| `manualControlState` | `ManualControlStateEnum` | DRC manual control state |
-| `subAssetInformation` | `SubAssetInformation` | Paired sub-asset info (sn, model, paired, online) |
-| `subAssetAtHome` | `Boolean` | Whether the sub-asset is at the dock |
-| `subAssetCharging` | `Boolean` | Whether the sub-asset is charging |
-| `subAssetPercentage` | `Float` | Sub-asset battery percentage |
-| `networkInformation` | `NetworkInformation` | Network type, rate, quality |
-| `airConditioner` | `AirConditioner` | Air conditioner state and switch time |
+NotificationRequestData assetOffline = NotificationRequestData.builder()
+    .sn("YOUR_DEVICE_SN")
+    .timestamp(LocalDateTime.now())
+    .assetStatusEvent(AssetStatusEventData.builder()
+        .sn("YOUR_DEVICE_SN")
+        .online(false)
+        .message("Lost connection to device")
+        .build())
+    .build();
 
-### SubAssetTelemetryData
+liveDataService.produceNotificationData(assetOffline);
+```
 
-Telemetry data for a sub-asset (e.g., a drone):
+---
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Sub-asset telemetry identifier |
-| `timestamp` | `LocalDateTime` | Measurement timestamp |
-| `latitude` | `Float` | GPS latitude |
-| `longitude` | `Float` | GPS longitude |
-| `absoluteAltitude` | `Float` | Altitude above sea level (meters) |
-| `relativeAltitude` | `Float` | Altitude above takeoff point (meters) |
-| `horizontalSpeed` | `Float` | Horizontal speed (m/s) |
-| `verticalSpeed` | `Float` | Vertical speed (m/s) |
-| `windSpeed` | `Float` | Wind speed (m/s) |
-| `windDirection` | `String` | Wind direction |
-| `heading` | `Float` | Heading in degrees |
-| `gear` | `Integer` | Landing gear state |
-| `heightLimit` | `Integer` | Maximum height limit (meters) |
-| `homeDistance` | `Float` | Distance to home point (meters) |
-| `totalMovementDistance` | `Double` | Total distance traveled (meters) |
-| `totalMovementTime` | `Double` | Total flight time (seconds) |
-| `mode` | `SubAssetMode` | Current flight mode |
-| `country` | `String` | Country code |
-| `batteryInformation` | `BatteryInformation` | Battery percentage, remaining time, RTH power |
-| `payloadTelemetry` | `PayloadTelemetry` | Camera, rangefinder, and sensor data |
+## Stream Management
 
-#### PayloadTelemetry
+Each of telemetry, detections, and notifications has its own stream lifecycle:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Payload identifier |
-| `timestamp` | `LocalDateTime` | Measurement timestamp |
-| `name` | `String` | Payload name |
-| `cameraData` | `CameraData` | Current lens, gimbal pitch/yaw, zoom factor |
-| `rangeFinderData` | `RangeFinderData` | Target lat/lon/distance/altitude |
-| `sensorData` | `SensorData` | Target temperature |
+```java
+liveDataService.closeStream("YOUR_DEVICE_SN");           // telemetry stream for one device
+liveDataService.closeDetectionStream("YOUR_DEVICE_SN");   // detection stream for one device
+liveDataService.closeNotificationStream("YOUR_DEVICE_SN"); // notification stream for one device
+liveDataService.closeAllStreams();                        // all telemetry streams (shutdown)
+```
+
+The `LiveDataServiceImpl` also registers a `@PreDestroy` callback that automatically closes streams with a 10-second timeout on application shutdown.
 
 ---
 
@@ -267,12 +272,14 @@ See the [Configuration Guide](edge-sdk-configuration.md) for the complete refere
 
 1. **Send telemetry at a reasonable frequency.** Sending too fast can overwhelm the gRPC stream and the platform. For most assets, 1-5 Hz is appropriate. For OSD (on-screen display) data from drones, the typical rate is 2 Hz.
 
-2. **Use the POJO API unless you have a specific reason not to.** The `TelemetryMapper` handles all Proto conversions for you, including timestamp mapping between `LocalDateTime` and Protobuf `Timestamp`.
+2. **Use the POJO API unless you have a specific reason not to.** The mapper handles all Proto conversions for you, including timestamp mapping between `LocalDateTime` and Protobuf `Timestamp`.
 
-3. **Set the correct `LiveDataType`.** Use `ASSET_TELEMETRY` for dock/station data and `SUBASSET_TELEMETRY` for drone/vehicle data. This determines how the data is routed and stored on the platform.
+3. **Set exactly one of `asset`/`subAsset`** on `TelemetryData` -- `getSourceType()` (and platform-side routing) depends on it.
 
-4. **Include a transaction ID.** Setting `tid` on every telemetry message enables end-to-end tracing across the system.
+4. **Include a transaction ID.** Setting `tid` on every message enables end-to-end tracing across the system.
 
-5. **Do not manually manage streams.** Let the SDK handle stream creation, reconnection, and teardown. If you need to reset a stream, call `closeStream(deviceSn)` and the next `produceTelemetry` call will create a new one automatically.
+5. **Correlate async commands with `externalExecutionId`.** If you returned `CommandResult.accepted(...)` for a command, use the same id in subsequent `CommandExecutionEventData` notifications so the platform can track and later cancel that specific run.
 
-6. **Handle the shutdown gracefully.** If your adapter has its own shutdown logic, call `closeAllStreams()` before tearing down other resources. The SDK does this automatically via `@PreDestroy`, but explicit ordering can prevent race conditions.
+6. **Do not manually manage streams.** Let the SDK handle stream creation, reconnection, and teardown. If you need to reset a stream, call the relevant `close*Stream(deviceSn)` and the next `produce*` call will create a new one automatically.
+
+7. **Handle shutdown gracefully.** If your adapter has its own shutdown logic, call `closeAllStreams()` before tearing down other resources. The SDK does this automatically via `@PreDestroy`, but explicit ordering can prevent race conditions.

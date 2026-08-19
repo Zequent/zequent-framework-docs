@@ -14,7 +14,7 @@ Uses `ZequentClientProducer` internally for consistent bean creation.
 <dependency>
     <groupId>com.zqnt.sdk</groupId>
     <artifactId>client-java-sdk</artifactId>
-    <version>1.2.4</version>
+    <version>1.2.10</version>
 </dependency>
 ```
 
@@ -65,7 +65,7 @@ public class LiveDataService {
 }
 ```
 
-**Done!** 
+That's the whole integration.
 
 ---
 
@@ -123,141 +123,29 @@ zequent.live-data.port=9999
 
 ---
 
-## Solution 3: With ZequentClientProducer (Advanced)
-
-If you want to use the `ZequentClientProducer` directly (uses the same logic as Quarkus):
-
-```java
-package com.yourcompany.config;
-
-import com.zqnt.sdk.client.ZequentClient;
-import com.zqnt.sdk.client.ZequentClientProducer;
-import com.zqnt.sdk.client.config.GrpcClientConfig;
-import com.zqnt.sdk.client.config.ServiceConfig;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-public class ZequentConfig {
-
-    @Bean
-    public ZequentClient zequentClient(
-            @Value("${zequent.remote-control.host:localhost}") String rcHost,
-            @Value("${zequent.remote-control.port:8002}") int rcPort,
-            @Value("${zequent.live-data.host:localhost}") String ldHost,
-            @Value("${zequent.live-data.port:8003}") int ldPort) {
-
-        // Manually create GrpcClientConfig
-        GrpcClientConfig config = GrpcClientConfig.builder()
-                .remoteControlConfig(ServiceConfig.builder()
-                        .serviceName("remote-control")
-                        .host(rcHost)
-                        .port(rcPort)
-                        .usePlaintext(true)
-                        .useStork(false)
-                        .loadBalancerType(ServiceConfig.LoadBalancerType.ROUND_ROBIN)
-                        .build())
-                .missionAutonomyConfig(ServiceConfig.builder()
-                        .serviceName("mission-autonomy")
-                        .host("localhost")
-                        .port(8004)
-                        .usePlaintext(true)
-                        .useStork(false)
-                        .loadBalancerType(ServiceConfig.LoadBalancerType.ROUND_ROBIN)
-                        .build())
-                .liveDataConfig(ServiceConfig.builder()
-                        .serviceName("live-data")
-                        .host(ldHost)
-                        .port(ldPort)
-                        .usePlaintext(true)
-                        .useStork(false)
-                        .loadBalancerType(ServiceConfig.LoadBalancerType.ROUND_ROBIN)
-                        .build())
-                .maxRetryAttempts(3)
-                .retryDelayMillis(1000L)
-                .circuitBreakerFailureThreshold(5)
-                .circuitBreakerWaitDurationMillis(30000L)
-                .connectionTimeoutSeconds(30)
-                .requestTimeoutSeconds(60)
-                .defaultLoadBalancerType(ServiceConfig.LoadBalancerType.ROUND_ROBIN)
-                .build();
-
-        // Use producer logic directly
-        return createZequentClient(config);
-    }
-
-    /**
-     * Creates ZequentClient with the same logic as ZequentClientProducer.
-     */
-    private ZequentClient createZequentClient(GrpcClientConfig config) {
-        // Create channels for each service
-        java.util.List<io.grpc.ManagedChannel> channels = new java.util.ArrayList<>();
-        io.grpc.ManagedChannel remoteControlChannel =
-                com.zqnt.sdk.client.grpc.ChannelFactory.createChannel(config.getRemoteControlConfig());
-        io.grpc.ManagedChannel missionAutonomyChannel =
-                com.zqnt.sdk.client.grpc.ChannelFactory.createChannel(config.getMissionAutonomyConfig());
-        io.grpc.ManagedChannel liveDataChannel =
-                com.zqnt.sdk.client.grpc.ChannelFactory.createChannel(config.getLiveDataConfig());
-
-        channels.add(remoteControlChannel);
-        channels.add(missionAutonomyChannel);
-        channels.add(liveDataChannel);
-
-        // Create service implementations
-        com.zqnt.sdk.client.remotecontrol.application.RemoteControl remoteControl =
-                com.zqnt.sdk.client.remotecontrol.application.impl.RemoteControlImpl.create(config, remoteControlChannel);
-        com.zqnt.sdk.client.missionautonomy.application.MissionAutonomy missionAutonomy =
-                com.zqnt.sdk.client.missionautonomy.application.MissionAutonomy.create(config, missionAutonomyChannel);
-        com.zqnt.sdk.client.livedata.application.LiveData liveData =
-                com.zqnt.sdk.client.livedata.application.LiveData.create(config, liveDataChannel);
-
-        // Return ZequentClient (exactly as ZequentClientProducer does)
-        return new ZequentClient(config, remoteControl, missionAutonomy, liveData, channels);
-    }
-}
-```
-
----
-
 ## Recommendation
 
-### For most customers: **Solution 1** or **Solution 2**
-
- **Ultra-simple**
- **Builder with defaults**
- **Optional properties via @Value**
-
-### For power users: **Solution 3**
-
- **Uses producer logic directly**
- **Maximum control**
- **Consistent with Quarkus**
-
----
+For most customers, **Solution 1** or **Solution 2** is enough — `ZequentClient.builder()` gives you the same resilience, load balancing, and connection management as the Quarkus/CDI path, just wired through a Spring `@Bean` instead of `@Inject`.
 
 ## Purpose of Components
 
-### `ZequentClientProducer` (for Quarkus)
-- Automatically used by Quarkus CDI
-- Reads properties via `@ConfigMapping`
-- Creates `ZequentClient` automatically
+### `ZequentClientProducer` (Quarkus only)
+- Used automatically by Quarkus CDI.
+- Reads configuration via `@ConfigMapping`.
+- Not relevant outside Quarkus — Spring Boot applications don't use it.
 
-### `ZequentClient.builder()` (for Spring Boot & Standalone)
-- For manual bean creation
-- Uses defaults (localhost:8002/8004/8003)
-- Flexibly configurable
+### `ZequentClient.builder()` (Spring Boot & standalone)
+- For manual bean creation.
+- Uses sensible defaults (`localhost:8002/8004/8003`).
+- Fully configurable per service.
 
-### Both produce the same result! 
-
-The `ZequentClientProducer` is **only** relevant for Quarkus CDI.
-For Spring Boot, the customer uses the **Builder** - that's the right way! 
+Both paths produce the same `ZequentClient` and the same runtime behavior — the builder is simply the non-CDI equivalent of what the Quarkus producer does automatically.
 
 ---
 
 ## Usage
 
-No matter which solution - the usage is identical:
+Usage is identical regardless of which solution wires up the bean:
 
 ```java
 @Service
@@ -270,6 +158,4 @@ public class MyService {
         zequentClient.remoteControl().takeoff(...);
     }
 }
-```
-
-**Simple, right?** 
+``` 

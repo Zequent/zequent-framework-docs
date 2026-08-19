@@ -46,7 +46,11 @@ Manages a persistent gRPC connection to the Live Data service. Lets you push ass
 
 ### `ConnectorClient`
 
-Talks to the platform's Connector Service over gRPC for asset registration / lookup and other CRUD operations.
+Talks to the platform's Connector Service over gRPC for asset registration/lookup and the Skill Contract registry — reporting which commands your adapter currently supports. Mission/task management is not part of this client; the platform drives task execution by calling into your `EdgeAdapter` instead (see [Mission Autonomy](edge-sdk-python-mission-autonomy.md)).
+
+### `EdgeAdapterConfig` / `EdgeAdapterRuntime`
+
+`EdgeAdapterConfig.from_env()` centralizes all environment-variable reading; its `.runtime()` gives you an async context manager (`EdgeAdapterRuntime`) that connects `ConnectorClient`, `TelemetryPublisher`, and `MissionAutonomyClient` for you and exposes `serve(adapter)` to start the gRPC server. This is the recommended way to wire up `main()` — see the [Quickstart](edge-sdk-python-quickstart.md).
 
 ## Available Documentation
 
@@ -57,8 +61,18 @@ Talks to the platform's Connector Service over gRPC for asset registration / loo
 | [Edge Adapter](edge-sdk-python-adapter.md)                                | Implementing the `EdgeAdapter` base class                            |
 | [Live Data](edge-sdk-python-live-data.md)                                 | Producing telemetry data streams from your adapter                   |
 | [Connector](edge-sdk-python-connector.md)                                 | Asset and resource management via the Connector Service              |
-| [Mission Autonomy](edge-sdk-python-mission-autonomy.md)                   | Working with missions, tasks, and schedulers                         |
+| [Mission Autonomy](edge-sdk-python-mission-autonomy.md)                   | Scheduler lookup, task lifecycle, and custom commands                |
 | [Models Reference](edge-sdk-python-models.md)                             | Request, response, and telemetry data model reference                |
+
+Ready-made adapters built on this SDK, and their deployment guides:
+
+| Adapter | Guide |
+|---------|-------|
+| MAVLink (PX4/ArduPilot) | [Deployment guide](edge-sdk-mavlink-adapter-deployment.md) |
+| Sapient | [Deployment guide](edge-sdk-sapient-adapter-deployment.md) |
+| RNS (Reticulum mesh) | [Deployment guide](edge-sdk-rns-adapter-deployment.md) |
+| Betaflight | [Deployment guide](edge-sdk-betaflight-adapter-deployment.md) |
+| AI (YOLO detection) | [Deployment guide](edge-sdk-ai-adapter-deployment.md) |
 
 ## Quick Start
 
@@ -70,13 +84,17 @@ uv add edge-python-sdk
 pip install edge-python-sdk
 ```
 
-Configure your edge via environment variables:
+Configure your edge via environment variables (see [Configuration](edge-sdk-python-configuration.md) for the full list; the platform's real service ports are `8010`/`8003`/`8004`, not the library's own defaults):
 
 ```bash
-export ZEQUENT_EDGE_ENDPOINT=localhost:9001
-export ZEQUENT_EDGE_SN=YOUR_DEVICE_SERIAL_NUMBER
-export ZEQUENT_EDGE_ASSET_TYPE=ASSET_TYPE_DOCK
-export ZEQUENT_EDGE_ASSET_VENDOR=DJI
+export GRPC_PORT=9001
+export CONNECTOR_HOST=localhost
+export CONNECTOR_PORT=8010
+export TELEMETRY_HOST=localhost
+export TELEMETRY_PORT=8003
+export MISSION_AUTONOMY_HOST=localhost
+export MISSION_AUTONOMY_PORT=8004
+export ADAPTER_SN=YOUR_DEVICE_SERIAL_NUMBER
 ```
 
 Implement the adapter:
@@ -84,7 +102,7 @@ Implement the adapter:
 ```python
 import asyncio
 from edge_sdk import (
-    EdgeAdapter, EdgeServer, EdgeResponse,
+    EdgeAdapter, EdgeAdapterConfig, EdgeResponse,
     Capabilities, AssetType, RequestContext, Coordinates,
 )
 
@@ -96,12 +114,13 @@ class MyEdgeAdapter(EdgeAdapter):
 
     async def take_off(self, ctx: RequestContext, coordinates: Coordinates) -> EdgeResponse:
         # call your hardware-specific takeoff
-        return EdgeResponse.success(ctx.tid, ctx.sn, "Takeoff initiated")
+        return EdgeResponse.ok(ctx.tid, ctx.sn, "Takeoff initiated")
 
 
 async def main():
-    server = EdgeServer(adapter=MyEdgeAdapter(), port=9001)
-    await server.serve()
+    config = EdgeAdapterConfig.from_env()
+    async with config.runtime() as runtime:
+        await runtime.serve(MyEdgeAdapter())
 
 
 asyncio.run(main())

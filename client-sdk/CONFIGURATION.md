@@ -23,13 +23,13 @@ Do not commit `.env` files. Store credentials and deployment-specific values in 
 Start the public template with:
 
 ```bash
-docker compose -f docs/docker-compose.customer.yml up -d
+docker compose -f docker-compose.customer.yml up -d
 ```
 
 Optional adapter images are enabled through Compose profiles, for example:
 
 ```bash
-docker compose -f docs/docker-compose.customer.yml --profile edge-dji up -d
+docker compose -f docker-compose.customer.yml --profile edge-dji up -d
 ```
 
 ## Platform Service Images
@@ -55,6 +55,33 @@ Use versioned image tags for production deployments.
 | RNS | `ghcr.io/zequent/edge-rns:latest` | Available |
 | Sapient | `ghcr.io/zequent/edge-sapient:latest` | Available |
 | AI Adapter | `ghcr.io/zequent/ai-adapter:latest` | Under development |
+
+## Required `.env` Variables (Platform Deployment)
+
+These go in the deployment-local `.env` file used by [docker-compose.customer.yml](../docker-compose.customer.yml) — not in your customer application's own `.env`.
+
+### Database and cache
+
+| Variable | Example | Notes |
+| --- | --- | --- |
+| `DATABASE_URL` | `jdbc:postgresql://postgres:5432/zequent_db` | JDBC URL, used by Hibernate |
+| `DATABASE_REACTIVE_URL` | `postgresql://postgres:5432/zequent_db` | Reactive driver URL (no `jdbc:` prefix) |
+| `DATABASE_USER` | `postgres` | |
+| `DATABASE_PASSWORD` | — | Set your own; do not use the Postgres default in production |
+| `REDIS_URL` | `redis://redis:6379` | |
+
+### Licensing
+
+Every platform service verifies a license lease before performing protected operations — see [Licensing](../README.md#licensing).
+
+| Variable | Applies to | Notes |
+| --- | --- | --- |
+| `LICENSING_INSTALLATION_ID` | All services | A stable identifier for this deployment |
+| `LICENSING_PUBLIC_KEY` | All services | Public key used to verify the license lease signature; provided with your license |
+| `LICENSING_LICENSE_KEY` | Admin Console only | The license key issued to your organization |
+| `LICENSE_SERVER_URL` | Admin Console only | Defaults to `https://api.zequent.com`; override only for a self-hosted/offline license server |
+
+Activation is a one-time step performed from the Admin Console once it's running — see [Licensing](../README.md#licensing).
 
 ## Client SDK Service Endpoints
 

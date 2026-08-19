@@ -12,11 +12,11 @@ Add the Zequent Client SDK to your `pom.xml`:
 <dependency>
     <groupId>com.zqnt.sdk</groupId>
     <artifactId>client-java-sdk</artifactId>
-    <version>1.2.4</version>
+    <version>1.2.10</version>
 </dependency>
 ```
 
-**That's it for dependencies!** Everything else is auto-configured.
+Check your package registry for the latest published version. Everything else is auto-configured.
 
 ## Step 2: Configuration
 
@@ -263,27 +263,36 @@ client.remoteControl().stopCharging(...)
 client.remoteControl().rebootAsset(...)
 ```
 
-### Mission Autonomy
+### Mission Autonomy — Applications & Skills
 ```java
-client.missionAutonomy().createMission(...)
-client.missionAutonomy().createTask(...)
-client.missionAutonomy().startTask(...)
+client.missionAutonomy().executeSkill(SkillExecutionCommand.packaged(...))
+client.missionAutonomy().getSkillExecution(executionId)
+client.missionAutonomy().pauseSkillExecution(...)
 client.missionAutonomy().createScheduler(...)
 ```
+See [Applications & Skills](../concepts/applications-and-skills.md) for the full picture — running the graph-based automations you build in the Admin Console.
 
 ### Live Data
 ```java
 client.liveData().streamTelemetryData(request, onData, onError)
 ```
 
+### Connector — assets, organizations, schedulers, technical config
+```java
+client.connector().getAssetBySn(request)
+client.connector().getOrganization(request)
+client.connector().createScheduler(request)
+```
+See [Connector](CONNECTOR.md) for the full method reference.
+
 ## Built-in Features
 
- **Automatic Retry** - Retries failed requests (configurable)
- **Circuit Breaker** - Prevents cascading failures
- **Load Balancing** - Round-robin, random, least-requests
- **Service Discovery** - Stork integration for Kubernetes
- **Connection Management** - Keep-alive, reconnection
- **Environment Variables** - No code changes between environments
+- **Automatic retry** — retries failed requests (configurable)
+- **Circuit breaker** — prevents cascading failures
+- **Load balancing** — round-robin, random, or least-requests
+- **Service discovery** — Stork integration for Kubernetes
+- **Connection management** — keep-alive, reconnection
+- **Environment-driven configuration** — no code changes between environments
 
 ## Configuration Reference
 
@@ -353,16 +362,14 @@ cat .env
 
 ## Support
 
-For issues or questions:
 - Documentation: [CONFIGURATION.md](CONFIGURATION.md)
-- Email: support@zequent.com
 - Email: support@zequent.com
 
 ## Summary
 
-1. **Add dependency** to `pom.xml`
-2. **Create `.env`** with service endpoints
-3. **Inject `ZequentClient`** in your code
-4. **Use it!** `client.remoteControl().takeoff(...)`
+1. Add the dependency to `pom.xml`.
+2. Create `.env` with service endpoints.
+3. Inject `ZequentClient` in your code.
+4. Use it: `client.remoteControl().takeoff(...)`.
 
-That's all! No interfaces to implement, no complex setup! 
+No interfaces to implement, no manual gRPC channel setup.

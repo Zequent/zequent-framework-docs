@@ -25,8 +25,9 @@ This document provides a comprehensive reference for all request, response, and 
   - [LiveStreamStopRequest](#livestreamstoprequest)
 - [Telemetry Models](#telemetry-models)
   - [TelemetryRequestData](#telemetryrequestdata)
-  - [AssetTelemetryData](#assettelemetrydata)
-  - [SubAssetTelemetryData](#subassettelemetrydata)
+  - [TelemetryData](#telemetrydata)
+  - [AssetDetails](#assetdetails)
+  - [SubAssetDetails](#subassetdetails)
 - [Mission Models](#mission-models)
   - [MissionData](#missiondata)
 - [Configuration Models](#configuration-models)
@@ -49,12 +50,14 @@ The universal return type for all `EdgeAdapterService` commands.
 | `tid` | `String` | Transaction ID for tracing |
 | `sn` | `String` | Device serial number |
 | `resultType` | `CommandResultType` | Result classification |
+| `externalExecutionId` | `String` | Vendor-assigned id for a command still running asynchronously (e.g. a DJI `flightId`). Set via `accepted(...)`; used to correlate async progress events and route cancellation back to the right execution. |
 
 **CommandResultType enum:**
 
 | Value | Description |
 |-------|-------------|
 | `SUCCESS` | Command executed successfully |
+| `ACCEPTED` | Command was accepted and is still running asynchronously — track it via `externalExecutionId` |
 | `ERROR` | Command failed |
 | `NOT_IMPLEMENTED` | Command is not supported by this adapter |
 
@@ -64,6 +67,9 @@ The universal return type for all `EdgeAdapterService` commands.
 // Success
 CommandResult.success("Message", sn)
 CommandResult.success("Message", tid, sn)
+
+// Accepted — still running asynchronously
+CommandResult.accepted("Message", externalExecutionId, sn)
 
 // Error
 CommandResult.error("Error message", sn)
@@ -77,6 +83,7 @@ CommandResult.notImplemented("Not supported", sn)
 
 ```java
 boolean isNotImplemented()  // returns true if resultType == NOT_IMPLEMENTED
+boolean isAccepted()        // returns true if resultType == ACCEPTED
 ```
 
 ---
@@ -319,9 +326,7 @@ Top-level wrapper for pushing telemetry data to the Live Data Service.
 | `sn` | `String` | Device serial number |
 | `assetId` | `String` | Platform asset identifier |
 | `timestamp` | `LocalDateTime` | When the telemetry was recorded |
-| `type` | `LiveDataType` | `ASSET_TELEMETRY` or `SUBASSET_TELEMETRY` |
-| `assetTelemetry` | `AssetTelemetryData` | Asset-level telemetry data |
-| `subAssetTelemetry` | `SubAssetTelemetryData` | Sub-asset-level telemetry data |
+| `telemetry` | `TelemetryData` | The actual telemetry payload — see below |
 
 Supports the `@Builder` pattern:
 
@@ -330,50 +335,98 @@ TelemetryRequestData data = TelemetryRequestData.builder()
     .sn("DEVICE_SN")
     .tid(UUID.randomUUID().toString())
     .timestamp(LocalDateTime.now())
-    .type(LiveDataType.ASSET_TELEMETRY)
-    .assetTelemetry(assetData)
+    .telemetry(telemetryData)
     .build();
 ```
 
 ---
 
-### AssetTelemetryData
+### TelemetryData
 
-Telemetry for the primary asset (dock, station, or ground device).
+Unified asset and sub-asset telemetry. Exactly one of `asset` / `subAsset` must be set — which one determines `getSourceType()` (`ASSET`, `SUB_ASSET`, or `UNSPECIFIED` if neither/both are set). Position and movement fields that both an asset and a sub-asset can report (`latitude`, `longitude`, `absoluteAltitude`, `relativeAltitude`, `windSpeed`, `heading`) live directly on `TelemetryData`, not duplicated per source type.
 
 **Package:** `com.zqnt.utils.edge.sdk.domains`
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | `String` | Telemetry identifier |
-| `timestamp` | `LocalDateTime` | Measurement time |
-| `latitude` | `Float` | GPS latitude |
-| `longitude` | `Float` | GPS longitude |
+| `id` | `String` | Telemetry identifier (required) |
+| `timestamp` | `LocalDateTime` | Measurement time (required) |
+| `sn` | `String` | Device serial number (required) |
+| `latitude` | `Double` | GPS latitude |
+| `longitude` | `Double` | GPS longitude |
 | `absoluteAltitude` | `Float` | Altitude above sea level (m) |
 | `relativeAltitude` | `Float` | Altitude above ground (m) |
+| `windSpeed` | `Float` | Wind speed (m/s) |
+| `heading` | `Float` | Heading (degrees) |
+| `asset` | `AssetDetails` | Set when this is asset-level telemetry (e.g. a dock) |
+| `subAsset` | `SubAssetDetails` | Set when this is sub-asset-level telemetry (e.g. a drone) |
+
+`validate()` throws `IllegalArgumentException` if `id`/`timestamp`/`sn` are missing, or if `asset`/`subAsset` aren't set to exactly one.
+
+```java
+TelemetryData telemetry = TelemetryData.builder()
+    .id(UUID.randomUUID().toString())
+    .timestamp(LocalDateTime.now())
+    .sn("DOCK-1")
+    .latitude(47.3769)
+    .longitude(8.5417)
+    .absoluteAltitude(450.0f)
+    .asset(assetDetails)   // or .subAsset(subAssetDetails) — exactly one
+    .build();
+```
+
+---
+
+### AssetDetails
+
+Telemetry specific to the primary asset (dock, station, or ground device). Nested under `TelemetryData.asset`.
+
+| Field | Type | Description |
+|-------|------|-------------|
 | `environmentTemp` | `Float` | Ambient temperature (C) |
 | `insideTemp` | `Float` | Internal temperature (C) |
 | `humidity` | `Float` | Humidity (%) |
-| `mode` | `AssetModes` | Operational mode |
+| `mode` | `AssetMode` | Operational mode |
 | `rainfall` | `RainfallEnum` | Rainfall condition |
-| `heading` | `Float` | Heading (degrees) |
+| `subAssetInformation` | `SubAssetInformation` | Paired sub-asset info |
+| `subAssetAtHome` | `Boolean` | Sub-asset at dock |
+| `subAssetCharging` | `Boolean` | Sub-asset charging |
+| `subAssetPercentage` | `Float` | Sub-asset battery (%) |
 | `debugModeOpen` | `Boolean` | Debug mode active |
 | `hasActiveManualControlSession` | `Boolean` | Manual control active |
 | `coverState` | `AssetCoverStateEnum` | Cover state |
 | `workingVoltage` | `Integer` | Working voltage (mV) |
 | `workingCurrent` | `Integer` | Working current (mA) |
 | `supplyVoltage` | `Integer` | Supply voltage (mV) |
-| `windSpeed` | `Float` | Wind speed (m/s) |
 | `positionValid` | `Boolean` | GPS position valid |
-| `manualControlState` | `ManualControlStateEnum` | DRC state |
-| `subAssetInformation` | `SubAssetInformation` | Paired sub-asset info |
-| `subAssetAtHome` | `Boolean` | Sub-asset at dock |
-| `subAssetCharging` | `Boolean` | Sub-asset charging |
-| `subAssetPercentage` | `Float` | Sub-asset battery (%) |
 | `networkInformation` | `NetworkInformation` | Network info |
 | `airConditioner` | `AirConditioner` | AC state |
+| `manualControlState` | `ManualControlStateEnum` | DRC state |
+| `positionState` | `PositionState` | GNSS fix quality |
+| `wirelessLink` | `WirelessLinkInformation` | Cellular/SDR link diagnostics |
+| `sdrState` | `SdrState` | SDR link diagnostics |
 
-**Nested types:**
+### SubAssetDetails
+
+Telemetry specific to a sub-asset (drone, vehicle). Nested under `TelemetryData.subAsset`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `horizontalSpeed` | `Float` | Horizontal speed (m/s) |
+| `verticalSpeed` | `Float` | Vertical speed (m/s) |
+| `windDirection` | `String` | Wind direction |
+| `gear` | `Integer` | Landing gear state |
+| `payloadTelemetry` | `PayloadTelemetry` | Primary payload/camera data |
+| `batteryInformation` | `BatteryInformation` | Battery data |
+| `heightLimit` | `Integer` | Max height limit (m) |
+| `homeDistance` | `Float` | Distance to home (m) |
+| `totalMovementDistance` | `Double` | Total distance traveled (m) |
+| `totalMovementTime` | `Double` | Total flight time (s) |
+| `mode` | `SubAssetMode` | Flight mode |
+| `country` | `String` | Country code |
+| `componentTelemetry` | `List<ComponentTelemetryData>` | Per-component telemetry (multiple payloads/sensors) |
+
+### Nested types
 
 `SubAssetInformation`:
 
@@ -399,39 +452,6 @@ Telemetry for the primary asset (dock, station, or ground device).
 | `state` | `AssetAirConditionerStateEnum` | AC state |
 | `switchTime` | `Integer` | Time until state switch |
 
----
-
-### SubAssetTelemetryData
-
-Telemetry for a sub-asset (drone, vehicle).
-
-**Package:** `com.zqnt.utils.edge.sdk.domains`
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Telemetry identifier |
-| `timestamp` | `LocalDateTime` | Measurement time |
-| `latitude` | `Float` | GPS latitude |
-| `longitude` | `Float` | GPS longitude |
-| `absoluteAltitude` | `Float` | Altitude above sea level (m) |
-| `relativeAltitude` | `Float` | Altitude above ground (m) |
-| `horizontalSpeed` | `Float` | Horizontal speed (m/s) |
-| `verticalSpeed` | `Float` | Vertical speed (m/s) |
-| `windSpeed` | `Float` | Wind speed (m/s) |
-| `windDirection` | `String` | Wind direction |
-| `heading` | `Float` | Heading (degrees) |
-| `gear` | `Integer` | Landing gear state |
-| `heightLimit` | `Integer` | Max height limit (m) |
-| `homeDistance` | `Float` | Distance to home (m) |
-| `totalMovementDistance` | `Double` | Total distance traveled (m) |
-| `totalMovementTime` | `Double` | Total flight time (s) |
-| `mode` | `SubAssetMode` | Flight mode |
-| `country` | `String` | Country code |
-| `batteryInformation` | `BatteryInformation` | Battery data |
-| `payloadTelemetry` | `PayloadTelemetry` | Payload/camera data |
-
-**Nested types:**
-
 `BatteryInformation`:
 
 | Field | Type | Description |
@@ -451,6 +471,19 @@ Telemetry for a sub-asset (drone, vehicle).
 | `rangeFinderData` | `RangeFinderData` | Rangefinder data |
 | `sensorData` | `SensorData` | Sensor readings |
 
+`ComponentTelemetryData` (one entry per physical component/payload on a sub-asset):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `componentId` | `String` | Component identifier |
+| `externalId` | `String` | Vendor-assigned identifier |
+| `kind` | `String` | Component kind (e.g. `"camera"`) |
+| `timestamp` | `LocalDateTime` | Measurement time |
+| `cameraData` | `CameraData` | Camera state |
+| `rangeFinderData` | `RangeFinderData` | Rangefinder data |
+| `sensorData` | `SensorData` | Sensor readings |
+| `attributes` | `Map<String, Object>` | Free-form additional attributes |
+
 `CameraData`:
 
 | Field | Type | Description |
@@ -458,14 +491,15 @@ Telemetry for a sub-asset (drone, vehicle).
 | `currentLens` | `String` | Active lens |
 | `gimbalPitch` | `Float` | Gimbal pitch (degrees) |
 | `gimbalYaw` | `Float` | Gimbal yaw (degrees) |
+| `gimbalRoll` | `Float` | Gimbal roll (degrees) |
 | `zoomFactor` | `Float` | Current zoom level |
 
 `RangeFinderData`:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `targetLatitude` | `Float` | Target latitude |
-| `targetLongitude` | `Float` | Target longitude |
+| `targetLatitude` | `Double` | Target latitude |
+| `targetLongitude` | `Double` | Target longitude |
 | `targetDistance` | `Float` | Distance to target (m) |
 | `targetAltitude` | `Float` | Target altitude (m) |
 
@@ -474,6 +508,16 @@ Telemetry for a sub-asset (drone, vehicle).
 | Field | Type | Description |
 |-------|------|-------------|
 | `targetTemperature` | `Float` | Measured temperature (C) |
+
+`PositionState`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `gpsNumber` | `Integer` | Number of GPS satellites in view |
+| `rtkNumber` | `Integer` | Number of RTK satellites in view |
+| `quality` | `Integer` | Fix quality indicator |
+
+`WirelessLinkInformation` and `SdrState` carry low-level 4G/SDR link diagnostics (frequency band, quality, link state) — populate them only if your device actually reports this level of detail; both are optional.
 
 ---
 

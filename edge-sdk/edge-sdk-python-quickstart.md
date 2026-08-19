@@ -32,7 +32,7 @@ If pulling from a private GitHub repository, configure `[tool.uv.sources]` in `p
 
 ```toml
 [tool.uv.sources]
-edge-python-sdk = { git = "https://github.com/Zequent/zqnt-edge-sdk-python", rev = "v1.0.0" }
+edge-python-sdk = { git = "https://github.com/Zequent/zqnt-edge-sdk-python", rev = "v1.2.3" }
 ```
 
 and provide a token via `GITHUB_TOKEN` when running `uv sync`.
@@ -41,23 +41,28 @@ and provide a token via `GITHUB_TOKEN` when running `uv sync`.
 
 ## Step 3: Configure the adapter
 
-Create a `.env` file (or export environment variables in your shell):
+`EdgeAdapterConfig` centralizes all environment-variable reading for you — you normally don't construct it by hand, just call `EdgeAdapterConfig.from_env()`. Create a `.env` file (or export environment variables in your shell):
 
 ```bash
-# Edge identity
-ZEQUENT_EDGE_ENDPOINT=localhost:9001
-ZEQUENT_EDGE_SN=YOUR_DEVICE_SERIAL_NUMBER
-ZEQUENT_EDGE_ASSET_TYPE=ASSET_TYPE_DOCK
-ZEQUENT_EDGE_ASSET_VENDOR=DJI
+# gRPC server this adapter exposes to the platform
+GRPC_HOST=0.0.0.0
+GRPC_PORT=9001
 
-# Platform services
-LIVE_DATA_SERVICE_HOST=localhost
-LIVE_DATA_SERVICE_PORT=8003
-CONNECTOR_SERVICE_HOST=localhost
-CONNECTOR_SERVICE_PORT=8010
+# Platform services this adapter talks to — override these to match your deployment
+CONNECTOR_HOST=localhost
+CONNECTOR_PORT=8010
+TELEMETRY_HOST=localhost
+TELEMETRY_PORT=8003
+MISSION_AUTONOMY_HOST=localhost
+MISSION_AUTONOMY_PORT=8004
+
+ADAPTER_SN=YOUR_DEVICE_SERIAL_NUMBER
+LOG_LEVEL=INFO
 ```
 
-The SDK reads these via `os.environ` when you call the corresponding factory helpers.
+The library's own built-in defaults for `CONNECTOR_PORT`/`TELEMETRY_PORT`/`MISSION_AUTONOMY_PORT` (`50053`/`50052`/`50054`) do **not** match the platform's real service ports (`8010`/`8003`/`8004`) — always set these explicitly for your deployment rather than relying on the defaults.
+
+See [Configuration reference](edge-sdk-python-configuration.md) for the complete list, including optional Redis-based service-discovery registration.
 
 ---
 
@@ -68,7 +73,7 @@ Create `my_edge_adapter/adapter.py`. You only override the commands your hardwar
 ```python
 import logging
 from edge_sdk import (
-    EdgeAdapter, EdgeResponse,
+    EdgeAdapter, EdgeResponse, ErrorMessage, ErrorCode,
     Capabilities, AssetType,
     RequestContext, Coordinates,
     ReturnToHomeRequest,
@@ -86,72 +91,43 @@ class MyDeviceAdapter(EdgeAdapter):
     async def take_off(self, ctx: RequestContext, coordinates: Coordinates) -> EdgeResponse:
         log.info("Takeoff requested for SN: %s", ctx.sn)
         # call your hardware's takeoff API here
-        ok = True
-        if ok:
-            return EdgeResponse.success(ctx.tid, ctx.sn, "Takeoff initiated")
-        return EdgeResponse.error(ctx.tid, ctx.sn, "Takeoff failed")
+        success = True
+        if success:
+            return EdgeResponse.ok(ctx.tid, ctx.sn, "Takeoff initiated")
+        return EdgeResponse.fail(ctx.tid, ctx.sn,
+            ErrorMessage(message="Takeoff failed", code=ErrorCode.ASSET_ERROR))
 
     async def return_to_home(
         self, ctx: RequestContext, request: ReturnToHomeRequest
     ) -> EdgeResponse:
         log.info("RTH for SN: %s", ctx.sn)
-        return EdgeResponse.success(ctx.tid, ctx.sn, "Returning to home")
+        return EdgeResponse.ok(ctx.tid, ctx.sn, "Returning to home")
 
     async def open_cover(self, ctx: RequestContext) -> EdgeResponse:
         log.info("Opening cover for SN: %s", ctx.sn)
-        return EdgeResponse.success(ctx.tid, ctx.sn, "Cover opening")
+        return EdgeResponse.ok(ctx.tid, ctx.sn, "Cover opening")
 ```
 
 ---
 
-## Step 5: Push telemetry data (optional)
+## Step 5: Wire it together and run
 
-If your device produces telemetry, use `TelemetryPublisher`:
-
-```python
-import asyncio
-from datetime import datetime, timezone
-from edge_sdk import TelemetryPublisher, AssetTelemetry, AssetPositionState
-
-
-async def telemetry_loop(sn: str):
-    pub = TelemetryPublisher(host="localhost", port=8003, sn=sn)
-    await pub.connect()
-    try:
-        while True:
-            await pub.publish_asset_telemetry(
-                AssetTelemetry(
-                    id=sn,
-                    timestamp=datetime.now(tz=timezone.utc),
-                    position=AssetPositionState(
-                        latitude=47.3769, longitude=8.5417, altitude=450.0,
-                    ),
-                    battery_percentage=87,
-                )
-            )
-            await asyncio.sleep(1.0)
-    finally:
-        await pub.close()
-```
-
----
-
-## Step 6: Run the adapter
-
-`my_edge_adapter/__main__.py`:
+`EdgeAdapterConfig.runtime()` gives you an async context manager that connects `ConnectorClient`, `TelemetryPublisher`, and `MissionAutonomyClient` for you, then `runtime.serve(adapter)` starts the gRPC server (with the standard health-check service pre-registered) and blocks until termination:
 
 ```python
+# my_edge_adapter/__main__.py
 import asyncio
 import logging
 
-from edge_sdk import EdgeServer
+from edge_sdk import EdgeAdapterConfig
 from .adapter import MyDeviceAdapter
 
 
 async def main():
-    logging.basicConfig(level=logging.INFO)
-    server = EdgeServer(adapter=MyDeviceAdapter(), port=9001)
-    await server.serve()
+    config = EdgeAdapterConfig.from_env()
+    async with config.runtime() as runtime:
+        adapter = MyDeviceAdapter()
+        await runtime.serve(adapter)
 
 
 if __name__ == "__main__":
@@ -164,21 +140,19 @@ Run it:
 uv run python -m my_edge_adapter
 ```
 
-You should see:
+You should see a startup log line reporting the gRPC/Connector/Telemetry/MissionAutonomy addresses it connected with.
 
-```
-INFO  edge_sdk.server.edge_server  EdgeServer listening on 0.0.0.0:9001
-```
+If your adapter needs to look up or register its own asset on startup, use `runtime.connector` (a connected `ConnectorClient`) before calling `runtime.serve(...)` — see [Connector](edge-sdk-python-connector.md#typical-startup-pattern). If it needs to push telemetry, pass `runtime.telemetry` (a connected `TelemetryPublisher`) into your adapter's constructor — see [Live Data](edge-sdk-python-live-data.md).
 
 ---
 
-## Step 7: Verify against the platform
+## Step 6: Verify against the platform
 
 With the platform services running from the published container images (see [Zequent Documentation](../README.md)):
 
 1. The platform discovers your adapter via the configured endpoint.
 2. Sending a takeoff command from a Client SDK (Java or Python) lands on your `take_off` method.
-3. Telemetry pushed via `TelemetryPublisher` is visible through the Live Data service.
+3. Telemetry pushed via `runtime.telemetry` is visible through the Live Data service.
 
 ---
 
@@ -186,5 +160,5 @@ With the platform services running from the published container images (see [Zeq
 
 - [Configuration reference](edge-sdk-python-configuration.md) — every env var the SDK reads
 - [Adapter reference](edge-sdk-python-adapter.md) — full list of overridable methods
-- [Live Data reference](edge-sdk-python-live-data.md) — telemetry model details
+- [Live Data reference](edge-sdk-python-live-data.md) — telemetry, detections, and notifications
 - [Connector reference](edge-sdk-python-connector.md) — asset registration helpers

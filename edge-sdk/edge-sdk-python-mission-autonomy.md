@@ -1,111 +1,98 @@
 # Edge SDK (Python) — Mission Autonomy
 
-The Python Edge SDK exposes mission, task, and scheduler operations through the same gRPC contract as the Java SDK. Most edge adapters interact with these only on the **receiving** side — the platform sends `prepare_task` / `start_task` / `stop_task` to your adapter; you don't usually need to call the Mission Autonomy service directly.
-
-If you do need to author missions/tasks/schedulers programmatically from an edge process, use the **Client SDK** (`zqnt-client-sdk`) — it wraps the same gRPC service and has the right ergonomics for "push to the platform" use cases.
+`MissionAutonomyClient` is a small, focused client: it lets an edge adapter look up a **scheduler** definition directly. Everything else related to running automated behavior on an asset — receiving task lifecycle calls, reporting progress, custom commands — happens through other parts of the SDK, described below.
 
 For Java, see [edge-sdk-mission-autonomy.md](edge-sdk-mission-autonomy.md).
 
 ---
 
-## Receiving tasks (typical edge case)
-
-The platform calls these methods on your `EdgeAdapter`:
+## Scheduler lookup
 
 ```python
-from edge_sdk import EdgeAdapter, EdgeResponse, Task
+from edge_sdk import MissionAutonomyClient
 
-class MyAdapter(EdgeAdapter):
-
-    async def prepare_task(self, ctx, task: Task) -> EdgeResponse:
-        # validate task config, pre-route waypoints, reserve resources
-        if not self._can_handle(task):
-            return EdgeResponse.error(ctx.tid, ctx.sn, "Unsupported task type")
-        self._pending[task.id] = task
-        return EdgeResponse.success(ctx.tid, ctx.sn, "Task prepared")
-
-    async def start_task(self, ctx, task: Task) -> EdgeResponse:
-        # begin execution; return immediately, push progress via telemetry
-        self._executor.submit(task)
-        return EdgeResponse.success(ctx.tid, ctx.sn, "Task started")
-
-    async def stop_task(self, ctx, task_id: str) -> EdgeResponse:
-        await self._executor.cancel(task_id)
-        return EdgeResponse.success(ctx.tid, ctx.sn, "Task stopped")
+client = MissionAutonomyClient(host="localhost", port=8004)
+await client.connect()
+try:
+    scheduler = await client.get_scheduler(scheduler_id="scheduler-uuid")
+finally:
+    await client.close()
 ```
 
 ---
 
-## Task model
+## Receiving tasks (the common case)
 
-`Task` (and the various `*TaskConfig` variants) live in `edge_sdk.models.task`:
-
-| Class                    | Use                                                 |
-|--------------------------|-----------------------------------------------------|
-| `Task`                   | Top-level container with id, type, status, config  |
-| `WaypointTaskConfig`     | Fly through ordered `Waypoint` list                 |
-| `DetectTaskConfig`       | AI detection on a flight path                       |
-| `AreaMappingTaskConfig`  | Survey an area defined by `AreaVertex` polygon      |
-| `PoiTaskConfig`          | Point-of-interest orbit                             |
-| `FollowTaskConfig`       | Follow a moving subject                             |
-| `TrackTaskConfig`        | Track a detected object                             |
+The platform drives task execution by calling *into* your `EdgeAdapter` — you don't poll or manage tasks yourself. Task methods receive a `task_id`; fetch whatever your adapter actually needs (e.g. a stored flight plan) through `ConnectorClient` rather than through `MissionAutonomyClient`:
 
 ```python
-from edge_sdk import Task, TaskType, WaypointTaskConfig, Waypoint
+from edge_sdk import EdgeAdapter, EdgeResponse, ErrorMessage, ErrorCode
 
-# Inspect the incoming task in start_task:
-async def start_task(self, ctx, task: Task) -> EdgeResponse:
-    if task.type == TaskType.WAYPOINT:
-        cfg: WaypointTaskConfig = task.waypoint_config
-        for wp in cfg.waypoints:
-            await self._fly_to(wp.latitude, wp.longitude, wp.altitude)
-    return EdgeResponse.success(ctx.tid, ctx.sn, "Task complete")
+class MyAdapter(EdgeAdapter):
+
+    async def prepare_task(self, ctx, task_id: str) -> EdgeResponse:
+        plan = await self._connector.get_asset_payload(asset_sn=ctx.sn, key=f"flight-plan-{task_id}")
+        if plan is None:
+            return EdgeResponse.fail(ctx.tid, ctx.sn,
+                ErrorMessage(message="No flight plan staged for this task", code=ErrorCode.CLIENT_ERROR))
+        self._pending[task_id] = plan
+        return EdgeResponse.ok(ctx.tid, ctx.sn, "Task prepared")
+
+    async def start_task(self, ctx, task_id: str) -> EdgeResponse:
+        self._executor.submit(task_id, self._pending[task_id])
+        return EdgeResponse.ok(ctx.tid, ctx.sn, "Task started")
+
+    async def stop_task(self, ctx, task_id: str) -> EdgeResponse:
+        await self._executor.cancel(task_id)
+        return EdgeResponse.ok(ctx.tid, ctx.sn, "Task stopped")
 ```
+
+## Custom commands
+
+For vendor-specific commands that don't map to a standard `EdgeAdapter` method (e.g. a proprietary waypoint-execute call), override `send_custom_command`:
+
+```python
+from edge_sdk import CustomCommandRequest, CustomCommandResponse
+
+class MyAdapter(EdgeAdapter):
+
+    async def send_custom_command(
+        self, ctx, request: CustomCommandRequest,
+    ) -> CustomCommandResponse:
+        if request.command_type == "mission.waypoint.execute":
+            execution_id = await self._start_waypoint_mission(request.params)
+            return CustomCommandResponse.ok(
+                ctx.tid, ctx.sn, request.command_type,
+                external_execution_id=execution_id,  # lets mission-autonomy cancel/correlate later
+            )
+        return CustomCommandResponse.not_supported(ctx.tid, ctx.sn, request.command_type)
+```
+
+Set `external_execution_id` when the command you just accepted keeps running asynchronously — mission-autonomy uses it to later cancel the command (`StopTask`) and to correlate `CommandExecutionEvent` notifications back to this specific execution.
 
 ---
 
 ## Reporting progress
 
-Progress and detection results flow back to the platform via `TelemetryPublisher`, **not** as task RPC return values:
-
-```python
-from edge_sdk import CommandProgress, DetectionResponse
-
-await pub.publish_progress(
-    task_id=task.id,
-    progress=CommandProgress(percent=42, status="surveying"),
-)
-
-await pub.publish_detection(
-    DetectionResponse(task_id=task.id, results=[...]),
-)
-```
-
-This lets long-running tasks stream updates without holding open RPC calls.
+Progress flows back to the platform via `LiveDataService.produce_notification`, not as a task RPC return value — see [Live Data](edge-sdk-python-live-data.md).
 
 ---
 
-## Mission and scheduler CRUD (rare for edge)
+## Where things live
 
-If you must, do it from the edge process via the Client SDK:
-
-```python
-from client_sdk import ZequentClient
-from client_sdk.models import MissionDTO, TaskDTO, SchedulerDTO
-
-async with ZequentClient.from_env() as client:
-    mission = await client.mission_autonomy.create_mission(MissionDTO(...))
-    task = await client.mission_autonomy.create_task(TaskDTO(mission_id=mission.id, ...))
-    sched = await client.mission_autonomy.create_scheduler(SchedulerDTO(task_id=task.id, ...))
-```
-
-This is intentionally **not** in the Edge SDK — keeping the Edge SDK focused on the device-facing contract avoids tight coupling with platform-side data models.
+| Concern | Where it lives |
+| --- | --- |
+| Receiving `prepare_task`/`start_task`/`stop_task` calls | `EdgeAdapter` — see [Edge Adapter](edge-sdk-python-adapter.md) |
+| Vendor-specific commands | `EdgeAdapter.send_custom_command` (above) |
+| Reporting progress/telemetry while a task runs | `LiveDataService` — see [Live Data](edge-sdk-python-live-data.md) |
+| Declaring which commands your adapter supports | `ConnectorClient`'s Skill Contract registry — see [Connector](edge-sdk-python-connector.md#skill-contracts) |
+| Authoring, deploying, and triggering multi-step Applications/Skills | The **Client SDK**, used by customer applications — see [Applications & Skills](../concepts/applications-and-skills.md) |
 
 ---
 
 ## Best practices
 
-- **Validate in `prepare_task`**, return an error there if you can't handle the task. Don't accept and then fail in `start_task`.
-- **Make `start_task` non-blocking.** Schedule the work and return success immediately. Use telemetry / progress pushes to report state.
+- **Validate in `prepare_task`**; return an error there if you can't handle the task. Don't accept and then fail in `start_task`.
+- **Make `start_task` non-blocking.** Schedule the work and return success immediately. Use `LiveDataService` to report state.
 - **Idempotent `stop_task`.** Cancelling a task that's already finished must be a no-op.
-- **Persist `task.id`** if you need to recover after a restart; the platform may re-issue a `start_task` for a task you already started.
+- **Persist `task_id`** if you need to recover after a restart; the platform may re-issue a `start_task` for a task you already started.

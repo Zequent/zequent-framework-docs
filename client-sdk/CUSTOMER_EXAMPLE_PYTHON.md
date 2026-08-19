@@ -70,13 +70,11 @@ class GoToBody(TakeoffBody):
     pass
 
 
-class CreateMissionBody(BaseModel):
-    name: str
-    description: str | None = None
-
-
-class StartTaskBody(BaseModel):
-    task_id: str
+class ExecuteSkillBody(BaseModel):
+    application_id: str
+    skill_id: str
+    application_version: str | None = None
+    parameters: dict = Field(default_factory=dict)
 ```
 
 ## `app/main.py`
@@ -90,7 +88,6 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 
 from client_sdk import (
     GoToRequest,
-    MissionDTO,
     ReturnToHomeRequest,
     TakeoffRequest,
     ZequentClient,
@@ -98,7 +95,7 @@ from client_sdk import (
     ZequentRetryExhaustedError,
 )
 
-from .models import CreateMissionBody, GoToBody, StartTaskBody, TakeoffBody
+from .models import ExecuteSkillBody, GoToBody, TakeoffBody
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -158,28 +155,32 @@ async def return_home(sn: str, client: ZequentClient = Depends(get_client)):
 
 
 # ----------------------------------------------------------------------
-# Mission Autonomy
+# Mission Autonomy — Applications & Skills
+# See: ../concepts/applications-and-skills.md
 # ----------------------------------------------------------------------
 
-@app.post("/missions")
-async def create_mission(
-    body: CreateMissionBody, client: ZequentClient = Depends(get_client),
+@app.post("/drones/{sn}/skills/execute")
+async def execute_skill(
+    sn: str, body: ExecuteSkillBody, client: ZequentClient = Depends(get_client),
 ):
-    return await client.mission_autonomy.create_mission(
-        MissionDTO(name=body.name, description=body.description)
+    """Run a named Skill from a deployed Application against one asset."""
+    return await client.mission_autonomy.execute_application(
+        asset_sn=sn,
+        application_id=body.application_id,
+        skill_id=body.skill_id,
+        application_version=body.application_version,
+        parameters=body.parameters,
     )
 
 
-@app.get("/missions/{mission_id}")
-async def get_mission(mission_id: str, client: ZequentClient = Depends(get_client)):
-    return await client.mission_autonomy.get_mission(mission_id)
+@app.get("/executions/{execution_id}")
+async def get_execution(execution_id: str, client: ZequentClient = Depends(get_client)):
+    return await client.mission_autonomy.get_skill_execution(execution_id)
 
 
-@app.post("/tasks/start")
-async def start_task(
-    body: StartTaskBody, client: ZequentClient = Depends(get_client),
-):
-    return await client.mission_autonomy.start_task(body.task_id)
+@app.post("/executions/{execution_id}/cancel")
+async def cancel_execution(execution_id: str, client: ZequentClient = Depends(get_client)):
+    return await client.mission_autonomy.cancel_skill_execution(execution_id)
 
 
 # ----------------------------------------------------------------------

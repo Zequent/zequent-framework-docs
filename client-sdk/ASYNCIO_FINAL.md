@@ -76,9 +76,9 @@ Cancelling the calling task cancels the underlying gRPC call. Use it for timeout
 ```python
 try:
     async with asyncio.timeout(2.0):
-        await client.mission_autonomy.get_task("slow-task-id")
+        await client.mission_autonomy.get_skill_execution("slow-execution-id")
 except TimeoutError:
-    log.warning("get_task timed out")
+    log.warning("get_skill_execution timed out")
 ```
 
 For streams, simply `break` out of the iterator or let the surrounding context manager exit:

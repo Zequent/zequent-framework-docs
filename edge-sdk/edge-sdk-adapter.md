@@ -162,7 +162,9 @@ public CompletableFuture<CommandResult> openCover(String sn) {
 | `lookAt(LookAtRequest)` | sn, lat, lon, alt, locked, payloadIndex | Point the camera at coordinates |
 | `changeLens(ChangeLensRequest)` | sn, lens, videoId | Switch the active camera lens |
 | `changeZoom(ChangeZoomRequest)` | sn, lens, payloadIndex, zoom | Adjust the camera zoom level |
+| `takePhoto(TakePhotoRequest)` | sn, payloadIndex | Capture a still photo |
 | `enableGimbalTracking(String sn, boolean enabled)` | sn, enabled | Enable or disable gimbal tracking mode |
+| `liveStreamSplitScreen(String sn, boolean enabled)` | sn, enabled | Toggle split-screen view across multiple lenses/payloads |
 
 Example:
 
@@ -187,9 +189,9 @@ public CompletableFuture<CommandResult> lookAt(LookAtRequest request) {
 |--------|-----------|-------------|
 | `enterManualControl(String sn)` | sn | Enter manual (joystick) control mode |
 | `exitManualControl(String sn)` | sn | Exit manual control mode |
-| `manualControlInput(Multi<ManualControlInput>)` | input stream | Receive a continuous stream of joystick inputs |
+| `manualControlInput(ManualControlInput)` | input | Called once per incoming stick-input frame while a manual control session is active |
 
-The `manualControlInput` method receives a reactive `Multi` stream of `ManualControlInput` objects, each containing roll, pitch, yaw, throttle, and gimbalPitch values. This is used for real-time joystick or virtual stick control.
+The gRPC layer calls `manualControlInput` once for every frame it receives from the client's manual-control stream — each call carries one `ManualControlInput` with roll, pitch, yaw, throttle, and gimbalPitch values. You don't manage the stream yourself; just forward each frame to your device.
 
 Example:
 
@@ -203,17 +205,13 @@ public CompletableFuture<CommandResult> enterManualControl(String sn) {
 }
 
 @Override
-public CompletableFuture<CommandResult> manualControlInput(Multi<ManualControlInput> inputStream) {
-    inputStream.subscribe().with(
-        input -> deviceApi.sendStickCommand(
-            input.getRoll(), input.getPitch(),
-            input.getYaw(), input.getThrottle()
-        ),
-        error -> log.error("Manual control stream error", error),
-        () -> log.info("Manual control stream completed")
+public CompletableFuture<CommandResult> manualControlInput(ManualControlInput input) {
+    deviceApi.sendStickCommand(
+        input.getRoll(), input.getPitch(),
+        input.getYaw(), input.getThrottle()
     );
     return CompletableFuture.completedFuture(
-        CommandResult.success("Manual control stream started", "")
+        CommandResult.success("Stick input applied", input.getSn())
     );
 }
 ```
@@ -251,7 +249,42 @@ public CompletableFuture<CommandResult> startLiveStream(LiveStreamStartRequest r
 |--------|-----------|-------------|
 | `prepareTask(String taskId, String tid)` | taskId, tid | Prepare a task for execution (e.g., generate wayline files, upload resources) |
 | `startTask(String taskId, String tid)` | taskId, tid | Start executing a previously prepared task |
+| `pauseTask(String taskId)` | taskId | Pause a running task |
+| `resumeTask(String taskId)` | taskId | Resume a paused task |
 | `stopTask(String taskId)` | taskId | Stop a running task |
+| `cancelExecution(String sn, String externalExecutionId)` | sn, externalExecutionId | Cancel an asynchronously-running command previously accepted via `sendCustomCommand` |
+
+### Custom Commands
+
+| Method | Parameters | Description |
+|--------|-----------|-------------|
+| `sendCustomCommand(String sn, String componentId, String commandType, Map<String, Object> params)` | sn, componentId, commandType, params | Handle a command that doesn't map to a standard method above. Set `externalExecutionId` on the result if the command keeps running asynchronously, so `cancelExecution`/`stopTask` can reference it later. |
+
+Example:
+
+```java
+@Override
+public CompletableFuture<CommandResult> sendCustomCommand(String sn, String componentId,
+        String commandType, Map<String, Object> params) {
+    if ("mission.waypoint.execute".equals(commandType)) {
+        String executionId = deviceApi.startWaypointMission(params);
+        return CompletableFuture.completedFuture(
+            CommandResult.accepted("Waypoint mission started", executionId, sn)
+        );
+    }
+    return CompletableFuture.completedFuture(CommandResult.notImplemented("Unknown command", sn));
+}
+```
+
+#### Command ID naming convention
+
+Every built-in command above maps to a well-known, vendor-neutral `command_id` string used when authoring Skills (see [Applications & Skills](../concepts/applications-and-skills.md)). Custom commands should follow the same convention:
+
+- **Vendor-neutral** — never encode a vendor name (`dji.takeoff` is wrong); the same id should be implementable by any adapter.
+- **`domain.action`** for a single atomic command — a domain (`flight`, `navigation`, `dock`, `asset`, `camera`, `gimbal`, `stream`) and a snake_case action (`return_to_home`, `go_to`, `change_lens`).
+- **`domain.subtype.action`** only when a domain genuinely has distinct execution variants, e.g. `mission.waypoint.execute`.
+- **`custom.` prefix** for tenant/user-defined commands, so they never collide with a future built-in of the same name.
+- Commands under `flight.`, `navigation.`, `dock.`, `mission.`, and `asset.reboot` are treated as high-risk by the platform's execution safety checks (e.g. may require human approval) — keep new movement-capable commands under one of those prefixes rather than introducing an unrecognized domain.
 
 Example:
 
@@ -318,13 +351,18 @@ CommandResult.error("Error description", sn);
 // Error with transaction ID
 CommandResult.error("Error description", tid, sn);
 
+// Accepted, but still running asynchronously — pass externalExecutionId so a later
+// stopTask/cancelExecution call can reference this specific run
+CommandResult.accepted("Waypoint mission started", externalExecutionId, sn);
+
 // Not Implemented (used by default methods)
 CommandResult.notImplemented("Command not supported", sn);
 ```
 
-The `CommandResult.ResultType` enum has three values:
+The `CommandResult.ResultType` enum has these values:
 - `SUCCESS` -- command executed successfully
 - `ERROR` -- command failed
+- `ACCEPTED` -- command was accepted and is still running asynchronously (use `isAccepted()` to check)
 - `NOT_IMPLEMENTED` -- command is not supported by this adapter
 
 ---

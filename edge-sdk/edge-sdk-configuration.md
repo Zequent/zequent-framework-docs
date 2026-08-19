@@ -145,7 +145,7 @@ The same pattern applies for `live-data-service` and `mission-autonomy-service`.
 
 ## MQTT Configuration
 
-Many edge adapters use MQTT to communicate with the physical device (e.g., DJI docks use MQTT for OSD telemetry, service commands, and state updates). MQTT is configured through the SmallRye Reactive Messaging MQTT connector.
+Some adapters use MQTT to communicate with the physical device — the DJI adapter uses it for OSD telemetry, service commands, and state updates. This is not a requirement of the Edge SDK itself: other built-in adapters talk to their device over whatever transport the vendor actually uses (serial for Betaflight, MAVLink over serial/UDP for MAVSDK-based adapters, raw TCP for Sapient) and have no MQTT configuration at all. If your custom adapter does use MQTT, it's configured through the SmallRye Reactive Messaging MQTT connector as below.
 
 ### Broker Configuration
 
