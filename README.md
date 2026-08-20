@@ -17,10 +17,12 @@ This public documentation is for external developers and integration teams. It f
 | Understand what you can build on Zequent | [Applications & Skills](concepts/applications-and-skills.md) |
 | Use Zequent from a Java application | [Java Client SDK Quickstart](client-sdk/QUICKSTART.md) |
 | Use Zequent from a Python application | [Python Client SDK Quickstart](client-sdk/QUICKSTART_PYTHON.md) |
+| Use Zequent from a Go application | [Go Client SDK Quickstart](client-sdk/QUICKSTART_GO.md) |
 | Configure a customer application / deployment | [Client SDK Configuration](client-sdk/CONFIGURATION.md) |
-| Look up assets, organizations, schedulers from your app | [Connector (Java)](client-sdk/CONNECTOR.md) / [Connector (Python)](client-sdk/CONNECTOR_PYTHON.md) |
+| Look up assets, organizations, schedulers from your app | [Connector (Java)](client-sdk/CONNECTOR.md) / [Connector (Python)](client-sdk/CONNECTOR_PYTHON.md) / [Connector (Go)](client-sdk/CONNECTOR_GO.md) |
 | Build a custom Java edge adapter | [Java Edge SDK Quickstart](edge-sdk/edge-sdk-quickstart.md) |
 | Build a custom Python edge adapter | [Python Edge SDK Quickstart](edge-sdk/edge-sdk-python-quickstart.md) |
+| Build a custom Go edge adapter | [Go Edge SDK Quickstart](edge-sdk/edge-sdk-go-quickstart.md) — older API surface, see the doc's status note |
 | Configure an edge adapter | [Edge SDK Configuration](edge-sdk/edge-sdk-configuration.md) |
 | Deploy a ready-made adapter | [DJI](edge-sdk/edge-sdk-dji-adapter-deployment.md) · [MAVLink](edge-sdk/edge-sdk-mavlink-adapter-deployment.md) · [Sapient](edge-sdk/edge-sdk-sapient-adapter-deployment.md) · [RNS](edge-sdk/edge-sdk-rns-adapter-deployment.md) · [Betaflight](edge-sdk/edge-sdk-betaflight-adapter-deployment.md) · [AI Adapter](edge-sdk/edge-sdk-ai-adapter-deployment.md) |
 
@@ -40,6 +42,7 @@ Customer applications normally use the Client SDK and connect to the platform se
 | --- | --- |
 | Java Client SDK | [Quickstart](client-sdk/QUICKSTART.md), [Configuration](client-sdk/CONFIGURATION.md), [Customer Example](client-sdk/CUSTOMER_EXAMPLE.md) |
 | Python Client SDK | [Quickstart](client-sdk/QUICKSTART_PYTHON.md), [Configuration](client-sdk/CONFIGURATION_PYTHON.md), [Customer Example](client-sdk/CUSTOMER_EXAMPLE_PYTHON.md) |
+| Go Client SDK | [Quickstart](client-sdk/QUICKSTART_GO.md), [Connector](client-sdk/CONNECTOR_GO.md) — no built-in retry/circuit-breaker/Stork layer, see the quickstart's "What this SDK deliberately does not do" |
 
 ## Platform Service Images
 
@@ -128,6 +131,7 @@ The Admin Console provides browser workflows for asset monitoring, telemetry, th
 | --- | --- |
 | Java Client SDK / Java Edge SDK | Java 25, Maven 3.9+ recommended, Quarkus 3.x for Quarkus applications |
 | Python Client SDK / Python Edge SDK | Python 3.12+, `uv` recommended, `grpc.aio` |
+| Go Client SDK / Go Edge SDK | Go 1.26+ (client) / Go 1.24+ (edge). Both modules are private (`github.com/Zequent/zqnt-client-sdk-go`, `github.com/Zequent/zqnt-edge-sdk-go`) — see each quickstart's `go env -w GONOSUMDB`/`GONOPROXY` step. The Go Edge SDK is on an older API surface than the Java/Python Edge SDKs — see its [overview](edge-sdk/edge-sdk-go-overview.md). |
 
 ## Package Access
 

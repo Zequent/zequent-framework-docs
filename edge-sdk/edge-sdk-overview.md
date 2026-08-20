@@ -50,6 +50,7 @@ Communicates with the Mission Autonomy Service over gRPC to look up scheduler de
 | [Connector](edge-sdk-connector.md) | Asset and resource management via the Connector Service |
 | [Mission Autonomy](edge-sdk-mission-autonomy.md) | Scheduler lookup, task lifecycle, and custom commands |
 | [Models Reference](edge-sdk-models.md) | Request, response, and telemetry data model reference |
+| [Go Edge SDK](edge-sdk-go-overview.md) | Go equivalent — an older API surface than this one, see its status note |
 
 ## Quick Start
 
