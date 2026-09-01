@@ -25,6 +25,7 @@ This public documentation is for external developers and integration teams. It f
 | Build a custom Go edge adapter | [Go Edge SDK Quickstart](edge-sdk/edge-sdk-go-quickstart.md) — older API surface, see the doc's status note |
 | Configure an edge adapter | [Edge SDK Configuration](edge-sdk/edge-sdk-configuration.md) |
 | Deploy a ready-made adapter | [DJI](edge-sdk/edge-sdk-dji-adapter-deployment.md) · [MAVLink](edge-sdk/edge-sdk-mavlink-adapter-deployment.md) · [Sapient](edge-sdk/edge-sdk-sapient-adapter-deployment.md) · [RNS](edge-sdk/edge-sdk-rns-adapter-deployment.md) · [Betaflight](edge-sdk/edge-sdk-betaflight-adapter-deployment.md) · [AI Adapter](edge-sdk/edge-sdk-ai-adapter-deployment.md) |
+| Stand up your first organization, users, or connect SSO | [Organizations, Users & Single Sign-On](admin/organizations-and-sso.md) |
 
 ## What You Can Build
 
@@ -124,6 +125,9 @@ The Admin Console is split into an API image and a UI image.
 | Admin Console API | `http://localhost:8005` |
 
 The Admin Console provides browser workflows for asset monitoring, telemetry, the Applications/Skills graph editor, remote control, live streams, adapter management, licensing, and service health.
+
+For bootstrapping your first organization and users, or connecting an organization to its own SSO
+identity provider, see [Organizations, Users & Single Sign-On](admin/organizations-and-sso.md).
 
 ## SDK Requirements
 
