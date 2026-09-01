@@ -8,7 +8,7 @@ The DJI Edge Adapter connects DJI docking stations and their sub-assets (drones)
 
 - Access to the Zequent container registry (`ghcr.io/zequent`)
 - A running MQTT broker reachable by the adapter (e.g. HiveMQ Cloud)
-- Running Zequent platform services: Connector Service, Live Data Service, Mission Autonomy Service
+- Running Zequent platform services: Connector Service, Live Data Service, Mission Autonomy Service, Remote Control Service
 
 ---
 
@@ -26,6 +26,21 @@ The DJI Edge Adapter has been tested and verified against the following DJI firm
 
 ---
 
+## Supported Device Models & Dynamic Capabilities
+
+Beyond the fixed command set (takeoff, dock ops, etc.), the DJI adapter reports a per-device-model list of vendor-specific settings as dynamic [capabilities](../client-sdk/REMOTE_CONTROL.md#capabilities--custom-commands) — settable through `client.remoteControl().sendCustomCommand(...)` without the platform needing a dedicated method for each one. Which properties are exposed is baked into the adapter build (`dji-capabilities.yaml`), not runtime-configurable — adding a new model or property requires a custom adapter build.
+
+As of this adapter version, two device profiles are defined:
+
+| Model | Exposed properties |
+|-------|---------------------|
+| DJI Dock 3 | Fast photo transfer, dock silent mode, DJI user-experience program (disabled by default) |
+| Matrice 4D / 4TD | Obstacle avoidance, height limit, night lights, distance limit, RTH altitude, FlyTo flight height/mode/link-loss action, return reserve battery, camera watermark, and (M4TD only) thermal camera palette/gain-mode/isotherm settings |
+
+A dock or drone not matching either profile still works for standard flight/dock operations — it just reports no dynamic capabilities beyond those.
+
+---
+
 ## Environment Variables
 
 ### Required
@@ -40,6 +55,7 @@ The DJI Edge Adapter has been tested and verified against the following DJI firm
 | `CONNECTOR_SERVICE_HOST` | Hostname of the Connector Service |
 | `LIVE_DATA_SERVICE_HOST` | Hostname of the Live Data Service |
 | `MISSION_AUTONOMY_SERVICE_HOST` | Hostname of the Mission Autonomy Service |
+| `REMOTE_CONTROL_SERVICE_HOST` | Hostname of the Remote Control Service |
 
 ### Optional
 
@@ -49,7 +65,11 @@ The DJI Edge Adapter has been tested and verified against the following DJI firm
 | `CONNECTOR_SERVICE_PORT` | `8010` | Connector Service gRPC port |
 | `LIVE_DATA_SERVICE_PORT` | `8003` | Live Data Service gRPC port |
 | `MISSION_AUTONOMY_SERVICE_PORT` | `8004` | Mission Autonomy Service gRPC port |
+| `REMOTE_CONTROL_SERVICE_PORT` | `8002` | Remote Control Service gRPC port |
 | `EDGE_ADAPTER_TARGET_ENDPOINTS` | `edge-dji:9001` | Address at which this adapter is reachable by the platform |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection used by the adapter's caching layer |
+| `ZQNT_DOCK_OFFLINE_TIMEOUT` | `10s` | A dock is reported offline if no OSD telemetry arrives within this window |
+| `ZQNT_DOCK_WATCHDOG_INTERVAL` | `2s` | How often the adapter checks each dock's telemetry age against `ZQNT_DOCK_OFFLINE_TIMEOUT` |
 | `S3_ENDPOINT` | `https://s3.amazonaws.com` | S3-compatible storage endpoint |
 | `S3_REGION` | `eu-central-1` | S3 region |
 | `S3_BUCKET` | `zqnt` | S3 bucket name |
@@ -139,6 +159,10 @@ spec:
               value: "mission-autonomy-service"
             - name: MISSION_AUTONOMY_SERVICE_PORT
               value: "8004"
+            - name: REMOTE_CONTROL_SERVICE_HOST
+              value: "remote-control-service"
+            - name: REMOTE_CONTROL_SERVICE_PORT
+              value: "8002"
             # S3 (optional - required for mission file uploads)
             - name: S3_ENDPOINT
               value: "https://s3.amazonaws.com"
@@ -188,6 +212,7 @@ The adapter subscribes and publishes to the following MQTT topics. The `+` wildc
 | `thing/product/+/state` | Incoming | Device state updates |
 | `sys/product/+/status` | Incoming | Dock/drone topology updates |
 | `thing/product/+/services_reply` | Incoming | Replies to service commands |
+| `thing/product/+/property/set_reply` | Incoming | Replies to dynamic property-set commands (see [Supported Device Models & Dynamic Capabilities](#supported-device-models--dynamic-capabilities)) |
 | `thing/product/+/requests` | Incoming | Device-initiated requests |
 | `thing/product/+/drc/up` | Incoming | Direct Remote Control upstream data |
 | Cloud-to-dock topics | Outgoing | Commands sent to the dock |

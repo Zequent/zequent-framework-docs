@@ -261,14 +261,22 @@ client.remoteControl().closeCover(...)
 client.remoteControl().startCharging(...)
 client.remoteControl().stopCharging(...)
 client.remoteControl().rebootAsset(...)
+client.remoteControl().liveStreamSplitScreen(...)
+client.remoteControl().getCapabilities(sn)
+client.remoteControl().sendCustomCommand(...)
 ```
+See [Remote Control](REMOTE_CONTROL.md) for the full method reference.
 
-### Mission Autonomy — Applications & Skills
+### Mission Autonomy — missions, tasks & scheduling
 ```java
-client.missionAutonomy().executeSkill(SkillExecutionCommand.packaged(...))
-client.missionAutonomy().getSkillExecution(executionId)
-client.missionAutonomy().pauseSkillExecution(...)
-client.missionAutonomy().createScheduler(...)
+client.missionAutonomy().createMission(missionDTO)
+client.missionAutonomy().createTask(taskDTO)
+client.missionAutonomy().startTask(taskId)
+client.missionAutonomy().pauseTask(taskId)
+client.missionAutonomy().resumeTask(taskId)
+client.missionAutonomy().stopTask(taskId)
+client.missionAutonomy().uploadMissionNfzZones(missionId, zones, replaceExisting)
+client.missionAutonomy().createScheduler(schedulerDTO)
 ```
 See [Applications & Skills](../concepts/applications-and-skills.md) for the full picture — running the graph-based automations you build in the Admin Console.
 

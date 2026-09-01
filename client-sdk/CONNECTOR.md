@@ -58,6 +58,94 @@ client.connector().getOrganization(request)
     .thenAccept(response -> System.out.println("Org: " + response));
 ```
 
+## Missions
+
+| Method | Purpose |
+| --- | --- |
+| `getMission(GetMissionRequest)` | Get a mission by ID |
+| `createMission(CreateMissionRequest)` | Create a mission |
+| `updateMission(UpdateMissionRequest)` | Update a mission |
+| `deleteMission(DeleteMissionRequest)` | Delete a mission |
+| `uploadMissionNfzZones(UploadMissionZonesRequest)` | Attach no-fly zones to a mission |
+
+`MissionResponse`/`TaskResponse`/`WaypointsResponse` use `isSuccess()` + `getError()` rather than the `getHasErrors()` pattern above — check `success` before reading the response payload.
+
+```java
+import com.zqnt.utils.missionautonomy.domains.MissionDTO;
+import com.zqnt.utils.mission.proto.MissionType;
+
+var mission = MissionDTO.builder()
+    .name("North Perimeter Patrol")
+    .type(MissionType.MISSION_TYPE_PERIMETER_PATROL)
+    .build();
+
+var request = CreateMissionRequest.builder().mission(mission).build();
+client.connector().createMission(request)
+    .thenAccept(response -> {
+        if (!response.isSuccess()) {
+            log.warn("Create mission failed: {}", response.getError().getErrorMessage());
+            return;
+        }
+        System.out.println("Mission created: " + response.getMissionId());
+    });
+```
+
+### No-fly zones
+
+A mission's no-fly zones (NFZ) tell the platform's route planner where it must route drones — and dock-return paths — around. A zone's `area` can be a polygon, bounding box, circle, or raw GeoJSON, controlled by `GeoAreaDTO.type`:
+
+```java
+import com.zqnt.utils.missionautonomy.domains.*;
+import com.zqnt.utils.mission.proto.GeoAreaType;
+import com.zqnt.utils.mission.proto.MissionZoneType;
+import com.zqnt.utils.mission.proto.ZoneEnforcementType;
+
+var zone = MissionZoneDTO.builder()
+    .name("Substation exclusion")
+    .type(MissionZoneType.MISSION_ZONE_TYPE_NO_FLY)
+    .enforcementType(ZoneEnforcementType.ZONE_ENFORCEMENT_TYPE_HARD_BLOCK)
+    .area(GeoAreaDTO.builder()
+        .type(GeoAreaType.GEO_AREA_TYPE_CIRCLE)
+        .center(GeoPointDTO.builder().latitude(52.520008).longitude(13.404954).build())
+        .radiusMeters(150.0)
+        .build())
+    .active(true)
+    .build();
+
+var request = UploadMissionZonesRequest.builder()
+    .missionId(missionId)
+    .zones(List.of(zone))
+    .replaceExisting(false)
+    .build();
+
+client.connector().uploadMissionNfzZones(request)
+    .thenAccept(response -> System.out.println("Zones uploaded: " + response.isSuccess()));
+```
+
+`GeoAreaDTO.type` requirements: `GEO_AREA_TYPE_POLYGON` needs 3+ `vertices`; `GEO_AREA_TYPE_BOUNDING_BOX` needs exactly 2; `GEO_AREA_TYPE_CIRCLE` needs `center` + a positive `radiusMeters`; `GEO_AREA_TYPE_GEO_JSON` needs `geoJson`. `replaceExisting(true)` replaces the mission's whole zone set instead of appending.
+
+## Tasks
+
+| Method | Purpose |
+| --- | --- |
+| `getTask(GetTaskRequest)` | Get a task by ID |
+| `getTaskByFlightId(GetTaskByFlightIdRequest)` | Get a task by its external flight ID |
+| `createTask(CreateTaskRequest)` | Create a task |
+| `updateTask(UpdateTaskRequest)` | Update a task |
+| `deleteTask(DeleteTaskRequest)` | Delete a task |
+| `getWaypointsByTaskId(GetWaypointsByTaskIdRequest)` | Get the resolved waypoint list for a task |
+
+```java
+var request = GetTaskByFlightIdRequest.builder()
+    .flightId("FLIGHT-20260901-0001")
+    .build();
+
+client.connector().getTaskByFlightId(request)
+    .thenAccept(response -> System.out.println("Task: " + response.getTaskId()));
+```
+
+`getTaskByFlightId` looks up a task by the external flight ID an edge adapter assigned it (`TaskDTO.externalTaskId`) — useful for correlating a vendor-side flight record back to its Zequent task without knowing the platform's task ID up front.
+
 ## Schedulers
 
 Schedulers define when and how often a Skill or command runs (see [Applications & Skills](../concepts/applications-and-skills.md)).
