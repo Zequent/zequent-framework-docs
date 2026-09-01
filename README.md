@@ -26,6 +26,7 @@ This public documentation is for external developers and integration teams. It f
 | Configure an edge adapter | [Edge SDK Configuration](edge-sdk/edge-sdk-configuration.md) |
 | Deploy a ready-made adapter | [DJI](edge-sdk/edge-sdk-dji-adapter-deployment.md) · [MAVLink](edge-sdk/edge-sdk-mavlink-adapter-deployment.md) · [Sapient](edge-sdk/edge-sdk-sapient-adapter-deployment.md) · [RNS](edge-sdk/edge-sdk-rns-adapter-deployment.md) · [Betaflight](edge-sdk/edge-sdk-betaflight-adapter-deployment.md) · [AI Adapter](edge-sdk/edge-sdk-ai-adapter-deployment.md) |
 | Stand up your first organization, users, or connect SSO | [Organizations, Users & Single Sign-On](admin/organizations-and-sso.md) |
+| Bridge external systems (MQTT, Kafka, OPC-UA, ...) into Skills and back out again | [Integration Hub](integrations/integration-hub.md) |
 
 ## What You Can Build
 
@@ -59,6 +60,14 @@ Zequent platform services are run from published container images. Use versioned
 | Admin Console UI | `ghcr.io/zequent/zqnt-admin-console-dashboard:latest` | `3001` | Browser UI: asset monitoring, live streams, manual control, and the Applications/Skills graph editor |
 
 Platform services also require **Postgres (TimescaleDB)** and **Redis** — see [docker-compose.customer.yml](docker-compose.customer.yml).
+
+### Integration Hub
+
+A separate, optional service for bridging external systems (MQTT, Kafka, OPC-UA, WebSocket,
+HTTP/OpenAPI) into the platform and back out again — including as Skill-invocable capabilities and
+Skill-execution triggers. Backend has its own container image and its own Postgres database; its UI
+is natively embedded in the Admin Console dashboard (not a separate image, in a console-embedded
+deployment). See the [Integration Hub deployment guide](integrations/integration-hub.md).
 
 ## Edge Adapter Images
 
