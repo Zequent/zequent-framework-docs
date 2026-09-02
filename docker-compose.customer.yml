@@ -87,6 +87,9 @@ services:
     # Set ADMIN_CONSOLE_CORS_ORIGINS in your .env to this deployment's real public dashboard
     # URL(s) (comma-separated) — the built-in default only covers localhost, which a real
     # customer domain never matches.
+    # License activation (the console's "Activate" screen, where the customer enters the license
+    # key we send them) is reachable by default. Set LICENSING_ACTIVATION_API_ENABLED=false in
+    # your .env only if you want to lock it down after the initial activation.
 
   admin-console-ui:
     <<: *zequent-env
